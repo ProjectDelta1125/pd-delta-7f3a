@@ -128,6 +128,7 @@ header .role { font-size: 12px; font-weight: 500; opacity: 0.9; }
     <button type="button" aria-label="Previous garden" onclick="pageGarden(-1)">‹</button>
     <h2 id="title">Garden</h2>
     <button type="button" aria-label="Next garden" onclick="pageGarden(1)">›</button>
+    <button type="button" aria-label="Print garden list" onclick="printGarden()" style="margin-left:8px;font-size:14px;">Print</button>
   </div>
   <div class="panel-body" id="content"></div>
 </aside>
@@ -308,6 +309,48 @@ document.querySelector('.stage').addEventListener('click', (e) => {
 document.getElementById('q').addEventListener('input', runSearch);
 document.getElementById('gardenFilter').addEventListener('change', runSearch);
 document.getElementById('typeFilter').addEventListener('change', runSearch);
+
+function printGarden() {
+  if (!currentGarden || !DATA) return;
+  const g = DATA.gardens && DATA.gardens[currentGarden];
+  if (!g) return;
+  let body = `<h1>${currentGarden}</h1>`;
+  for (const [section, rows] of Object.entries(g)) {
+    const merged = {};
+    rows.forEach(r => {
+      const id = r.id;
+      if (!merged[id]) merged[id] = { qty: 0, sizes: [] };
+      merged[id].qty += (parseInt(r.qty, 10) || 0);
+      if (r.size && !merged[id].sizes.includes(r.size)) merged[id].sizes.push(r.size);
+    });
+    body += `<h2>${section}</h2><table><thead><tr><th>Qty</th><th>Plant</th><th>Size</th></tr></thead><tbody>`;
+    const sorted = Object.entries(merged).sort((a, b) => {
+      const pa = DATA.plants[a[0]] || {};
+      const pb = DATA.plants[b[0]] || {};
+      return ((pa.display || pa.name || a[0]).toLowerCase()).localeCompare((pb.display || pb.name || b[0]).toLowerCase());
+    });
+    for (const [id, m] of sorted) {
+      const plant = DATA.plants[id] || {};
+      const name = plant.display || plant.name || id;
+      const sizeStr = m.sizes.join(', ');
+      body += `<tr><td>${m.qty}</td><td>${name}</td><td>${sizeStr}</td></tr>`;
+    }
+    body += '</tbody></table>';
+  }
+  const w = window.open('', '_blank');
+  if (!w) { alert('Allow pop-ups to print'); return; }
+  w.document.write(`<!DOCTYPE html><html><head><title>${currentGarden}</title><style>
+    body{font-family:sans-serif;margin:20px;}
+    h1{color:#3A5F3A;}
+    table{border-collapse:collapse;width:100%;margin-bottom:20px;}
+    th,td{border:1px solid #ccc;padding:6px;text-align:left;}
+    th{background:#3A5F3A;color:#fff;}
+  </style></head><body>${body}</body></html>`);
+  w.document.close();
+  w.focus();
+  setTimeout(() => w.print(), 300);
+}
+
 </script>
 </body>
 </html>
