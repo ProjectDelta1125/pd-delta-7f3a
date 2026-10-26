@@ -120,7 +120,7 @@ header .role { font-size: 12px; font-weight: 500; opacity: 0.9; }
     <button class="btn" style="left:46.5%; top:70.0%;" data-garden="Maintenance">MAINTENANCE</button>
     <button class="btn" style="left:86.5%; top:35.0%;" data-garden="Beltline">BELTLINE</button>
     <button class="btn" style="left:76.0%; top:55.0%;" data-garden="Visitor Center">VISITOR CENTER</button>
-    <button class="btn inactive" style="left:80.5%; top:85.0%;" title="Access Drive — reserved">ACCESS DRIVE</button>
+    <button class="btn" style="left:80.5%; top:85.0%;" data-garden="Access Road">ACCESS DRIVE</button>
   </div>
 </div>
 <div class="search-view" id="searchView">
@@ -143,6 +143,7 @@ header .role { font-size: 12px; font-weight: 500; opacity: 0.9; }
       <option value="all">Whole garden</option>
       <option value="Trees">Trees only</option>
       <option value="Shrubs">Shrubs only</option>
+      <option value="Planters">Planters only</option>
       <option value="Groundcovers/Perennials">Groundcovers/Perennials</option>
       <option value="Ground Covers/Perennials/Annuals">Ground Covers/Perennials/Annuals</option>
       <option value="Groundcovers/Ornamental Grasses/Bamboo/Perennials">Groundcovers/Ornamental Grasses/Bamboo/Perennials</option>
@@ -193,10 +194,10 @@ function logout() {
   document.getElementById('panel').classList.remove('open');
 }
 
-const DATA_VERSION = '2026-10-21-finite-extract-v1.5';
+const DATA_VERSION = '2026-10-25-clean';
 const DATA_FILE = 'plant-data.json?v=' + DATA_VERSION;
 const STATUS_FILE = 'pdf-status.json?v=' + DATA_VERSION;
-const gardenOrder = ["Piedmont","Shuttle Path","Orangerie","Fountain Garden","Overlook","Walled Garden","Rockery","Water Terrace","Mirror Garden","Wonderland","Passage","Maintenance","Beltline","Visitor Center"];
+const gardenOrder = ["Piedmont","Shuttle Path","Orangerie","Fountain Garden","Overlook","Walled Garden","Rockery","Water Terrace","Mirror Garden","Wonderland","Passage","Maintenance","Beltline","Visitor Center","Access Road"];
 let DATA = null;
 let PRESENT = new Set();
 let currentGarden = null;
@@ -224,13 +225,20 @@ async function load() {
   try {
     const s = await fetch(STATUS_FILE);
     const status = await s.json();
-    PRESENT = new Set(status.present || []);
+    if (Array.isArray(status.present)) {
+      PRESENT = new Set(status.present);
+    } else if (status && typeof status === 'object') {
+      // Flat { id: true/false } shape — keep only true entries
+      PRESENT = new Set(Object.keys(status).filter(k => status[k] === true));
+    } else {
+      PRESENT = new Set();
+    }
   } catch (e) {
     PRESENT = new Set();
   }
   const ver = DATA.version || DATA_VERSION;
   const pdfCount = PRESENT.size;
-  document.getElementById('versionFooter').textContent = 'Data: ' + ver + ' | PDFs present: ' + pdfCount + ' | Missing sheets show “sheet pending” | Full botanical and common names | Published date on each sheet';
+  document.getElementById('versionFooter').textContent = 'Data: ' + ver + ' | PDFs present: ' + pdfCount + ' | Missing sheets show “sheet pending” | Full botanical and common names';
   renderCounts();
   const gf = document.getElementById('gardenFilter');
   gardenOrder.forEach(g => { const o = document.createElement('option'); o.value = g; o.textContent = g; gf.appendChild(o); });
@@ -246,7 +254,7 @@ function renderCounts() {
     const t = p.type || 'Other';
     counts[t] = (counts[t] || 0) + 1;
   });
-  const order = ['Tree', 'Shrub', 'Groundcover', 'Bulb', 'Vine', 'Green Roof'];
+  const order = ['Tree', 'Shrub', 'Groundcover', 'Planter', 'Bulb', 'Vine', 'Green Roof'];
   const parts = order.filter(t => counts[t]).map(t => `<span><strong>${counts[t]}</strong> ${t}${counts[t] === 1 ? '' : 's'}</span>`);
   const total = Object.values(counts).reduce((s, n) => s + n, 0);
   document.getElementById('countsStrip').innerHTML = parts.join('') + `<span style="margin-left:auto;"><strong>${total}</strong> unique plants</span>`;
@@ -261,7 +269,10 @@ function openPanel(garden) {
   const g = DATA && DATA.gardens && DATA.gardens[garden];
   if (!g) { content.innerHTML = '<p>No plant list for this garden in the data file.</p>'; return; }
   let html = '';
-  for (const [section, rows] of Object.entries(g)) {
+  const sectionOrder = ['Trees', 'Shrubs', 'Groundcovers', 'Planters', 'Bulbs', 'Vines', 'Green Roof', 'Other'];
+  const ordered = [...sectionOrder.filter(s => g[s]), ...Object.keys(g).filter(s => !sectionOrder.includes(s))];
+  for (const section of ordered) {
+    const rows = g[section];
     const merged = {};
     rows.forEach(r => {
       const id = r.id;
