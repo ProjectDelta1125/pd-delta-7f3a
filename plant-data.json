@@ -1,5 +1,5 @@
 {
-  "version": "2026-10-25-clean",
+  "version": "2026-10-27-recut171",
   "source": "Install/25_Procurement/2026-10-21_25_ECL_Matrix_Finite_Extract_v1.5.xlsx (Current Qty > 0; plant sections only; Botanical/Common split; tree sections force Tree type)",
   "plants": {
     "T0001": {
