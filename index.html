@@ -152,6 +152,7 @@ header .role { font-size: 12px; font-weight: 500; opacity: 0.9; }
     <button type="button" aria-label="Previous garden" onclick="pageGarden(-1)">‹</button>
     <h2 id="title">Garden</h2>
     <button type="button" aria-label="Next garden" onclick="pageGarden(1)">›</button>
+    <input id="panelFilter" type="search" placeholder="Filter this garden" aria-label="Filter plants in this garden" style="width:100%;margin:6px 0;padding:8px;border:1px solid #ccc;border-radius:4px;min-height:40px;">
     <select id="printSelect" aria-label="Print options" onchange="handlePrint(this.value)" style="margin-left:8px;min-height:40px;font-size:14px;background:#fff;color:#1F2A2F;border-radius:4px;">
       <option value="">Print…</option>
       <option value="all">Whole garden</option>
@@ -286,6 +287,8 @@ function renderCounts() {
 function openPanel(garden) {
   currentGarden = garden;
   document.getElementById('title').textContent = garden;
+  const pf = document.getElementById('panelFilter');
+  if (pf) pf.value = '';
   document.getElementById('panel').classList.add('open');
   document.querySelectorAll('.btn').forEach(b => b.classList.toggle('active', b.dataset.garden === garden));
   const content = document.getElementById('content');
@@ -315,7 +318,8 @@ function openPanel(garden) {
     for (const [id, m] of sorted) {
       const plant = DATA.plants[id] || {};
       const sizeStr = m.sizes.join(', ');
-      html += `<tr><td class="qty">${m.qty}</td><td>${nameCell(id, plant)}</td><td class="size">${sizeStr}</td></tr>`;
+      const hay = ((plant.botanical || '') + ' ' + (plant.common || '') + ' ' + (plant.display || '') + ' ' + (plant.name || '')).toLowerCase().replace(/"/g, '');
+    html += `<tr data-plant="${hay}"><td class="qty">${m.qty}</td><td>${nameCell(id, plant)}</td><td class="size">${sizeStr}</td></tr>`;
     }
     html += '</table>';
   }
@@ -423,6 +427,24 @@ document.querySelector('.stage').addEventListener('click', (e) => {
   if (document.getElementById('panel').classList.contains('open')) closePanel();
 });
 document.getElementById('q').addEventListener('input', runSearch);
+
+function filterPanel() {
+  const q = (document.getElementById('panelFilter').value || '').trim().toLowerCase();
+  const content = document.getElementById('content');
+  content.querySelectorAll('table').forEach(table => {
+    let visible = 0;
+    table.querySelectorAll('tr[data-plant]').forEach(tr => {
+      const show = !q || tr.dataset.plant.includes(q);
+      tr.style.display = show ? '' : 'none';
+      if (show) visible += 1;
+    });
+    const h3 = table.previousElementSibling;
+    if (h3 && h3.tagName === 'H3') h3.style.display = visible ? '' : 'none';
+    table.style.display = visible ? '' : 'none';
+  });
+}
+document.getElementById('panelFilter').addEventListener('input', filterPanel);
+
 document.getElementById('gardenFilter').addEventListener('change', runSearch);
 document.getElementById('typeFilter').addEventListener('change', runSearch);
 
