@@ -1,0 +1,1351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<title>Project Delta</title>
+<style>
+:root {
+  --olive: #3A5F3A;
+  --rust: #9C5F4A;
+  --terracotta: #A57A5A;
+  --charcoal: #1F2A2F;
+  --white: #FFFFFF;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, sans-serif; color: var(--charcoal); background: #f4f1ec; }
+header { background: var(--olive); color: var(--white); padding: 12px 16px; font-weight: 600; letter-spacing: 0.02em; display: flex; align-items: center; justify-content: space-between; }
+header .role { font-size: 12px; font-weight: 500; opacity: 0.9; }
+.nav { display: flex; gap: 8px; padding: 8px 14px; background: #fff; border-bottom: 1px solid #ddd; }
+.nav button { min-height: 44px; padding: 8px 16px; border: 1px solid var(--olive); background: #fff; color: var(--olive); border-radius: 4px; font-weight: 600; }
+.nav button.active { background: var(--olive); color: var(--white); }
+.counts { display: flex; flex-wrap: wrap; gap: 10px 16px; padding: 8px 14px; background: #fff; border-bottom: 1px solid #ddd; font-size: 13px; color: var(--charcoal); }
+.counts span { white-space: nowrap; }
+.counts strong { color: var(--olive); font-weight: 700; }
+.layout { position: relative; }
+.stage { position: relative; width: 100%; max-width: 1100px; margin: 0 auto; }
+.stage img { width: 100%; height: auto; display: block; }
+.btn { position: absolute; min-height: clamp(16px, 3.2vw, 28px); min-width: clamp(16px, 3.2vw, 28px); padding: clamp(2px, 0.5vw, 6px) clamp(4px, 1vw, 10px); background: rgba(156, 95, 74, 0.75); color: var(--white); border: 1px solid #fff; border-radius: clamp(6px, 1vw, 10px); font-weight: 700; font-size: clamp(7px, 1.6vw, 11px); letter-spacing: 0.02em; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.3); line-height: 1; display: flex; align-items: center; justify-content: center; text-align: center; white-space: nowrap; }
+.btn.inactive { opacity: 0.45; cursor: default; pointer-events: none; }
+.btn:focus { outline: 3px solid var(--olive); }
+.btn.active { outline: 3px solid #fff; }
+.panel { position: fixed; top: 0; right: 0; width: 380px; max-width: 100%; height: 100%; background: #fff; box-shadow: -4px 0 16px rgba(0,0,0,0.15); transform: translateX(100%); transition: transform 0.25s ease; z-index: 20; display: flex; flex-direction: column; }
+.panel.open { transform: translateX(0); }
+.panel-head { background: var(--olive); color: var(--white); padding: 10px 12px; display: flex; align-items: center; gap: 8px; }
+.panel-head button { min-height: 44px; min-width: 44px; background: var(--rust); color: var(--white); border: none; border-radius: 4px; font-size: 20px; font-weight: 700; }
+.panel-head h2 { margin: 0; flex: 1; font-size: 18px; }
+.panel-body { overflow: auto; padding: 12px; flex: 1; }
+.panel-body h3 { margin: 14px 0 6px; color: var(--olive); border-bottom: 1px solid #ddd; padding: 8px 0 4px; position: sticky; top: 0; background: #fff; z-index: 2; }
+.panel-body table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.panel-body td { padding: 6px 4px; border-bottom: 1px solid #eee; vertical-align: top; }
+.panel-body a { color: #0d4a8c; text-decoration: none; }
+.panel-body a:hover, .panel-body a:focus { text-decoration: none; color: #082f5c; }
+.counts a { color: #0d4a8c; text-decoration: none; cursor: pointer; }
+.counts a:hover, .counts a:focus { text-decoration: none; color: #082f5c; }
+.pending { color: #888; font-style: italic; }
+.pending-tag { font-size: 11px; color: var(--terracotta); margin-left: 6px; }
+.qty { font-weight: 700; color: var(--olive); width: 36px; }
+.size { color: #666; font-size: 12px; white-space: nowrap; }
+.note { font-size: 12px; color: #666; margin-top: 12px; }
+.search-view { display: none; padding: 14px; max-width: 720px; margin: 0 auto; }
+.search-view input, .search-view select { width: 100%; min-height: 44px; margin-bottom: 8px; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; }
+.search-row { display: flex; gap: 8px; margin-bottom: 8px; }
+.search-row input { flex: 1; margin-bottom: 0; }
+.search-row button { min-height: 44px; padding: 8px 14px; background: var(--rust); color: #fff; border: none; border-radius: 4px; font-weight: 600; white-space: nowrap; }
+.match-count { font-weight: 600; color: var(--olive); margin: 4px 0 10px; }
+.empty-state { color: #666; padding: 24px 0; text-align: center; }
+.search-group h3 { margin: 16px 0 6px; color: var(--olive); border-bottom: 1px solid #ddd; padding: 8px 0 4px; position: sticky; top: 0; background: #fff; z-index: 1; }
+.search-group table { width: 100%; border-collapse: collapse; font-size: 14px; table-layout: fixed; }
+.search-group th { text-align: left; font-size: 12px; color: #666; font-weight: 600; padding: 4px; border-bottom: 1px solid #ddd; }
+.search-group td { padding: 6px 4px; border-bottom: 1px solid #eee; vertical-align: top; word-break: break-word; overflow-wrap: anywhere; }
+.search-group th:nth-child(1), .search-group td:nth-child(1) { width: 40px; padding-right: 2px; }
+.search-group th:nth-child(2), .search-group td:nth-child(2) { width: 36%; padding-left: 2px; }
+.search-group th:nth-child(3), .search-group td:nth-child(3) { width: 30%; }
+.search-group th:nth-child(4), .search-group td:nth-child(4) { width: 28%; }
+.search-group .garden-text {
+  display: block;
+  font-size: 12px;
+  line-height: 1.35;
+  color: #444;
+}
+.search-group .garden-text span {
+  display: block;
+}
+.search-group a { color: #0d4a8c; text-decoration: none; }
+.search-group a:hover, .search-group a:focus { color: #082f5c; }
+.footer { padding: 8px 14px; font-size: 12px; color: #666; background: #fff; border-top: 1px solid #ddd; }
+#app { display: none; }
+#gate {
+  position: fixed; inset: 0; background: #f4f1ec; display: flex; align-items: center; justify-content: center; z-index: 100;
+}
+.gate-box {
+  background: #fff; padding: 28px 24px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+  width: 100%; max-width: 340px; text-align: center;
+}
+.gate-box h1 { margin: 0 0 6px; font-size: 22px; color: var(--olive); }
+.gate-box p { margin: 0 0 18px; font-size: 14px; color: #666; }
+.gate-box input {
+  width: 100%; min-height: 48px; padding: 10px 12px; border: 1px solid #ccc; border-radius: 4px;
+  font-size: 18px; text-align: center; letter-spacing: 0.08em; margin-bottom: 12px;
+}
+.gate-box button {
+  width: 100%; min-height: 48px; background: var(--olive); color: var(--white); border: none;
+  border-radius: 4px; font-size: 16px; font-weight: 600; cursor: pointer;
+}
+.gate-box .msg { margin-top: 12px; font-size: 13px; color: var(--rust); min-height: 18px; }
+.logout { background: none; border: none; color: var(--white); font-size: 12px; text-decoration: none; cursor: pointer; padding: 0; }
+.toc-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.toc-table th { text-align: left; font-size: 10px; color: #666; font-weight: 600; padding: 2px 4px; border-bottom: 1px solid #ddd; position: sticky; top: 0; background: #fff; }
+.toc-table td { padding: 3px 4px; border-bottom: 1px solid #eee; vertical-align: middle; line-height: 1.2; }
+.toc-table a { color: #0d4a8c; text-decoration: none; font-weight: 600; }
+.toc-table .loaded-cell { color: #0d4a8c; font-weight: 700; }
+.toc-table .missing { color: #888; }
+.toc-table .rev, .toc-table .date { font-size: 11px; color: #555; white-space: nowrap; }
+@media (max-width: 768px) {
+  .panel { width: 100%; height: 55%; top: auto; bottom: 0; right: 0; transform: translateY(100%); }
+  .panel.open { transform: translateY(0); }
+  .stage { max-width: 100%; }
+}
+@media (max-width: 480px) and (orientation: portrait) {
+  .btn { font-size: 7px; padding: 1px 4px; min-height: 16px; min-width: 16px; border-radius: 5px; }
+}
+.pub-date { display: block; font-size: 11px; color: #666; margin-top: 2px; }
+.panel-body a:hover + .pub-date, .panel-body a:focus + .pub-date { color: var(--olive); }
+.plant-name-cell { display: flex; align-items: center; }
+.plant-name-cell a { flex: 1; }
+
+</style>
+</head>
+<body>
+<div id="gate">
+  <div class="gate-box">
+    <h1>Project Delta</h1>
+    <p>Enter passcode</p>
+    <form id="gateForm" onsubmit="return checkCode(event)">
+      <input id="code" type="password" inputmode="text" autocomplete="off" aria-label="Passcode" required>
+      <button type="submit">Enter</button>
+    </form>
+    <div class="msg" id="gateMsg"></div>
+  </div>
+</div>
+<div id="app">
+<header>
+  <span>Project Delta</span>
+  <span class="role"><span id="roleLabel"></span> <button class="logout" onclick="logout()">Log out</button></span>
+</header>
+<div class="nav">
+  <button id="mapBtn" class="active" onclick="showMap()">Map</button>
+  <button id="searchBtn" onclick="showSearch()">Search</button>
+  <button id="tocBtn" onclick="openTOC()">Drawing TOC</button>
+</div>
+<div class="counts" id="countsStrip">Loading counts…</div>
+<div class="layout" id="mapView">
+  <div class="stage">
+    <img id="mapImg" src="map.png" alt="Garden map">
+    <button class="btn" style="left: 45.0%; top:36.5%;" data-garden="Walled Garden">WALLED</button>
+    <button class="btn" style="left:52.0%; top:8.0%;" data-garden="Piedmont">PIEDMONT</button>
+    <button class="btn" style="left:5.5%; top:30.5%;" data-garden="Shuttle Path">SHUTTLE</button>
+    <button class="btn" style="left:17.0%; top: 21.0%;" data-garden="Orangerie">ORANGERIE</button>
+    <button class="btn" style="left:30.0%; top:32.0%;" data-garden="Fountain Garden">FOUNTAIN</button>
+    <button class="btn" style="left:45.0%; top:20.0%;" data-garden="Overlook">OVERLOOK</button>
+    <button class="btn" style="left:68.0%; top:20.0%;" data-garden="Rockery">ROCKERY</button>
+    <button class="btn" style="left: 59.0%; top:39.5%;" data-garden="Water Terrace">WATER TERRACES</button>
+    <button class="btn" style="left:27.0%; top:50.0%;" data-garden="Mirror Garden">MIRROR</button>
+    <button class="btn" style="left: 52.0%; top:58.0%;" data-garden="Wonderland">WONDERLAND</button>
+    <button class="btn" style="left:15.0%; top:75.0%;" data-garden="Passage">PASSAGE</button>
+    <button class="btn" style="left:46.5%; top: 73.0%;" data-garden="Maintenance">MAINTENANCE</button>
+    <button class="btn" style="left:86.5%; top:35.0%;" data-garden="Beltline">BELTLINE</button>
+    <button class="btn" style="left:72.0%; top:55.0%;" data-garden="Visitor Center">VISITOR CENTER</button>
+    <button class="btn" style="left:76.0%; top:85.0%;" data-garden="Access Road">ACCESS DRIVE</button>
+  </div>
+</div>
+<div class="search-view" id="searchView">
+  <label for="q">Search plant name</label>
+  <div class="search-row">
+    <input id="q" type="search" placeholder="Botanical, cultivar, or common name" aria-label="Search by botanical or common name">
+    <button type="button" onclick="clearSearch()" aria-label="Clear search">Clear</button>
+  </div>
+  <label for="gardenFilter">Garden</label>
+  <select id="gardenFilter" aria-label="Filter by garden"><option value="">All gardens</option></select>
+  <label for="typeFilter">Type</label>
+  <select id="typeFilter" aria-label="Filter by type"><option value="">All types</option></select>
+  <div style="display:flex;gap:8px;margin-bottom:12px;">
+    <button type="button" onclick="printSearch()" style="min-height:44px;padding:8px 14px;background:var(--olive);color:#fff;border:none;border-radius:4px;font-weight:600;">Print search results</button>
+    <button type="button" onclick="downloadSearch()" style="min-height:44px;padding:8px 14px;background:var(--rust);color:#fff;border:none;border-radius:4px;font-weight:600;">Download PDFs</button>
+  </div>
+  <div id="searchResults"></div>
+</div>
+<aside class="panel" id="panel" aria-label="Drawing TOC and garden lists">
+  <div class="panel-head">
+    <button type="button" aria-label="Previous garden" onclick="pageGarden(-1)">‹</button>
+    <h2 id="title">Drawing TOC</h2>
+    <button type="button" aria-label="Next garden" onclick="pageGarden(1)">›</button>
+    <select id="printSelect" aria-label="Print options" onchange="handlePrint(this.value)" style="display:none;margin-left:2px;min-height:40px;font-size:12px;background:#fff;color:#1F2A2F;border-radius:4px;width:78px;">
+      <option value="">Print…</option>
+      <option value="all">Whole garden</option>
+      <option value="Trees">Trees</option>
+      <option value="Shrubs">Shrubs</option>
+      <option value="Vines">Vines</option>
+      <option value="Groundcovers">Groundcovers</option>
+      <option value="Bulbs">Bulbs</option>
+      <option value="Planters">Planters</option>
+    </select>
+    <select id="downloadSelect" aria-label="Download PDFs" onchange="handleDownload(this.value)" style="display:none;margin-left:2px;min-height:40px;font-size:12px;background:#fff;color:#1F2A2F;border-radius:4px;width:88px;">
+      <option value="">Download PDFs…</option>
+      <option value="all">Whole garden</option>
+      <option value="Trees">Trees</option>
+      <option value="Shrubs">Shrubs</option>
+      <option value="Vines">Vines</option>
+      <option value="Groundcovers">Groundcovers</option>
+      <option value="Bulbs">Bulbs</option>
+      <option value="Planters">Planters</option>
+    </select>
+  </div>
+  <div class="panel-body" id="content"></div>
+</aside>
+<footer class="footer" id="versionFooter">Loading data…</footer>
+</div>
+<!-- JSZip for offline garden PDF packages -->
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script>
+const CODES = { '2029': 'user', '1125': 'admin' };
+const AUTH_KEY = 'pd_auth';
+const memStore = {};
+
+function storeGet(key) {
+  try { return sessionStorage.getItem(key); } catch (e) { return memStore[key] || null; }
+}
+function storeSet(key, value) {
+  try { sessionStorage.setItem(key, value); } catch (e) { memStore[key] = value; }
+}
+function storeRemove(key) {
+  try { sessionStorage.removeItem(key); } catch (e) { delete memStore[key]; }
+}
+
+function checkCode(e) {
+  e.preventDefault();
+  const code = document.getElementById('code').value.trim().toLowerCase();
+  const role = CODES[code];
+  if (!role) {
+    document.getElementById('gateMsg').textContent = 'Incorrect passcode.';
+    document.getElementById('code').value = '';
+    return false;
+  }
+  storeSet(AUTH_KEY, role);
+  openApp(role);
+  return false;
+}
+
+function openApp(role) {
+  document.getElementById('gate').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('roleLabel').textContent = role === 'admin' ? 'Admin' : 'Field';
+  if (!DATA) load().catch(err => {
+    document.getElementById('versionFooter').textContent = 'Data file not loaded. Place plant-data.json next to this page.';
+    console.error(err);
+  });
+}
+
+function logout() {
+  storeRemove(AUTH_KEY);
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('gate').style.display = 'flex';
+  document.getElementById('code').value = '';
+  document.getElementById('gateMsg').textContent = '';
+  document.getElementById('panel').classList.remove('open');
+}
+
+const DATA_VERSION = "2026-11-04-garden-arrows";
+const DATA_FILE = 'plant-data.json?v=' + DATA_VERSION;
+const STATUS_FILE = 'pdf-status.json?v=' + DATA_VERSION;
+const gardenOrder = ["Piedmont","Shuttle Path","Orangerie","Fountain Garden","Overlook","Walled Garden","Rockery","Water Terrace","Mirror Garden","Wonderland","Passage","Maintenance","Beltline","Visitor Center","Access Road"];
+
+const DRAWING_TOC = [
+  { sheet: "G0.00", title: "Atlanta Botanical Garden New Garden", rev: "0", date: "2026-02-13", loaded: false },
+  { sheet: "G0.01", title: "Sheet List", rev: "2", date: "2026-09-25", loaded: false },
+  { sheet: "L0.02.A", title: "General Notes", rev: "0", date: "2026-02-13", loaded: false },
+  { sheet: "L0.02.B", title: "Owner Specific Tree Protection Notes and Specifications", rev: "0", date: "2026-02-13", loaded: false },
+  { sheet: "L1.00.B", title: "Site and Landscape Plan - Overlay", rev: "0", date: "2026-02-13", loaded: false },
+  { sheet: "L12.50", title: "Overall Soils Plan", rev: "0", date: "2026-02-13", loaded: false },
+  { sheet: "L12.60", title: "Soils Plan - Shuttle Path", rev: "C", date: "2026-02-13", loaded: true, detail: "plans/261101_41_Soils_L12.60_hires.webp" },
+  { sheet: "L12.70", title: "Soils Plan - Garden South", rev: "1", date: "2026-07-31", loaded: true, detail: "plans/261101_41_Soils_L12.70_hires.webp" },
+  { sheet: "L12.80", title: "Soils Plan - Garden North", rev: "1", date: "2026-07-31", loaded: true, detail: "plans/261101_41_WT_Soils_L12.80_hires.webp" },
+  { sheet: "L12.81", title: "Soils Plan - Green Roof Enlargement", rev: "C", date: "2026-02-13", loaded: true, detail: "plans/261101_41_Soils_L12.81_hires.webp" },
+  { sheet: "L12.90", title: "Soils Plan - Westminster Road", rev: "1", date: "2026-07-31", loaded: true, detail: "plans/261101_41_Soils_L12.90_hires.webp" },
+  { sheet: "L15.00", title: "Planting Plan - Overall Key Plan", rev: "0", date: "2026-02-13", loaded: false },
+  { sheet: "L15.10.A", title: "Planting Plan Structure - Orangerie", rev: "2", date: "2026-09-25", loaded: true, detail: "plans/261102_41_Structure_L15.10.A_hires.webp" },
+  { sheet: "L15.10.B", title: "Planting Plan Structure - Fountain Garden", rev: "1", date: "2026-07-31", loaded: true, detail: "plans/261101_41_FT_Structure_L15.10.B_hires.webp" },
+  { sheet: "L15.10.C", title: "Planting Plan Structure - Walled Garden", rev: "0", date: "2026-02-13", loaded: true, detail: "plans/261101_41_WL_Structure_L15.10.C_hires.webp" },
+  { sheet: "L15.10.D", title: "Planting Plan Structure - Water Terraces", rev: "2", date: "2026-09-25", loaded: true, detail: "plans/261102_41_Structure_L15.10.D_hires.webp" },
+  { sheet: "L15.10.E", title: "Planting Plan Structure - Overlook Garden", rev: "2", date: "2026-09-25", loaded: true, detail: "plans/261102_41_Structure_L15.10.E_hires.webp" },
+  { sheet: "L15.10.F", title: "Planting Plan Structure - Rockery", rev: "2", date: "2026-09-25", loaded: true, detail: "plans/261102_41_Structure_L15.10.F_hires.webp" },
+  { sheet: "L15.10.G", title: "Planting Plan Structure - Beltline North", rev: "2", date: "2026-09-25", loaded: true, detail: "plans/261102_41_Structure_L15.10.G_hires.webp" },
+  { sheet: "L15.10.H", title: "Planting Plan Structure - Beltline South", rev: "2", date: "2026-09-25", loaded: true, detail: "plans/261102_41_Structure_L15.10.H_hires.webp" },
+  { sheet: "L15.10.I", title: "Planting Plan Structure - Wonderland", rev: "2", date: "2026-09-25", loaded: true, detail: "plans/261102_41_Structure_L15.10.I_hires.webp" },
+  { sheet: "L15.10.II", title: "Planting Plan Structure - Wonderland Hedge Enlargement", rev: "0", date: "2026-02-13", loaded: true, detail: "plans/261101_41_WH_Structure_L15.10.II_hires.webp" },
+  { sheet: "L15.10.J", title: "Planting Plan Structure - Mirror Garden", rev: "2", date: "2026-09-25", loaded: true, detail: "plans/261102_41_MR_Structure_L15.10.J_hires.webp" },
+  { sheet: "L15.10.K", title: "Planting Plan Structure - Passage Garden North", rev: "2", date: "2026-09-25", loaded: true, detail: "plans/261102_41_PN_Structure_L15.10.K_hires.webp" },
+  { sheet: "L15.10.L", title: "Planting Plan Structure - Passage Garden South", rev: "2", date: "2026-09-25", loaded: true, detail: "plans/261102_41_PS_Structure_L15.10.L_hires.webp" },
+  { sheet: "L15.10.M", title: "Planting Plan Structure - Maintenance Area", rev: "2", date: "2026-09-25", loaded: true, detail: "plans/261102_41_MN_Structure_L15.10.M_hires.webp" },
+  { sheet: "L15.10.N", title: "Planting Plan Structure - Piedmont Streetscape", rev: "1", date: "2026-07-31", loaded: true, detail: "plans/261102_41_PD_Structure_L15.10.N_hires.webp" },
+  { sheet: "L15.10.O", title: "Planting Plan Structure - Shuttle Path", rev: "1", date: "2026-07-31", loaded: true, detail: "plans/261102_41_SH_Structure_L15.10.O_hires.webp" },
+  { sheet: "L15.10.P", title: "Planting Plan Structure - Service Drive", rev: "2", date: "2026-09-25", loaded: true, detail: "plans/261102_41_SV_Structure_L15.10.P_hires.webp" },
+  { sheet: "L15.10.Q", title: "Planting Schedule - Structure", rev: "2", date: "2026-09-25", loaded: true, detail: "plans/261102_41_Structure_Schedule_L15.10.Q_hires.webp" },
+  { sheet: "L15.20.A", title: "Planting Plan Understory - Orangerie", rev: "C", date: "2026-02-13", loaded: true, detail: "plans/261101_41_OR_Understory_L15.20.A_hires.webp" },
+  { sheet: "L15.20.B", title: "Planting Plan Understory - Fountain Garden", rev: "C", date: "2026-02-13", loaded: true, detail: "plans/261101_41_FT_Understory_L15.20.B_hires.webp" },
+  { sheet: "L15.20.C1", title: "Planting Plan Understory - Walled Garden", rev: "0", date: "2026-02-13", loaded: true, detail: "plans/261101_41_WL_Understory_L15.20.C1_hires.webp" },
+  { sheet: "L15.20.C2", title: "Planting Plan Understory - Walled Garden Option 2", rev: "0", date: "2026-02-13", loaded: true, detail: "plans/261101_41_WL_Understory_L15.20.C2_hires.webp" },
+  { sheet: "L15.20.D", title: "Planting Plan Understory - Water Terraces", rev: "C", date: "2026-02-13", loaded: true, detail: "plans/261101_41_WT_Understory_L15.20.D_hires.webp" },
+  { sheet: "L15.20.E", title: "Planting Plan Understory - Overlook Garden", rev: "0", date: "2026-02-13", loaded: true, detail: "plans/261101_41_OL_Understory_L15.20.E_hires.webp" },
+  { sheet: "L15.20.F", title: "Planting Plan Understory - Rockery", rev: "C", date: "2026-02-13", loaded: true, detail: "plans/261101_41_RK_Understory_L15.20.F_hires.webp" },
+  { sheet: "L15.20.G", title: "Planting Plan Understory - Beltline North", rev: "C", date: "2026-02-13", loaded: true, detail: "plans/261101_41_BN_Understory_L15.20.G_hires.webp" },
+  { sheet: "L15.20.H", title: "Planting Plan Understory - Beltline South", rev: "C", date: "2026-02-13", loaded: true, detail: "plans/261101_41_BS_Understory_L15.20.H_hires.webp" },
+  { sheet: "L15.20.I", title: "Planting Plan Understory - Wonderland", rev: "C", date: "2026-02-13", loaded: true, detail: "plans/261101_41_WD_Understory_L15.20.I_hires.webp" },
+  { sheet: "L15.20.J", title: "Planting Plan Understory - Mirror Garden", rev: "0", date: "2026-02-13", loaded: true, detail: "plans/261102_41_MR_Understory_L15.20.J_hires.webp" },
+  { sheet: "L15.20.K", title: "Planting Plan Understory - Passage Garden North", rev: "0", date: "2026-02-13", loaded: true, detail: "plans/261102_41_PN_Understory_L15.20.K_hires.webp" },
+  { sheet: "L15.20.L", title: "Planting Plan Understory - Passage Garden South", rev: "0", date: "2026-02-13", loaded: true, detail: "plans/261102_41_PS_Understory_L15.20.L_hires.webp" },
+  { sheet: "L15.20.M", title: "Planting Plan Understory - Maintenance Area", rev: "0", date: "2026-02-13", loaded: true, detail: "plans/261102_41_MN_Understory_L15.20.M_hires.webp" },
+  { sheet: "L15.20.N", title: "Planting Plan Understory - Piedmont Streetscape", rev: "1", date: "2026-07-31", loaded: true, detail: "plans/261101_41_PD_Understory_L15.20.N_hires.webp" },
+  { sheet: "L15.20.O", title: "Planting Plan Understory - Shuttle Path", rev: "0", date: "2026-02-13", loaded: true, detail: "plans/261101_41_SH_Understory_L15.20.O_hires.webp" },
+  { sheet: "L15.20.P", title: "Planting Plan Understory - Service Drive", rev: "1", date: "2026-07-31", loaded: true, detail: "plans/261101_41_SV_Understory_L15.20.P_hires.webp" },
+  { sheet: "L15.20.Q", title: "Planting Plan Understory - VC Green Roof", rev: "0", date: "2026-02-13", loaded: true, detail: "plans/261101_41_VC_Understory_L15.20.Q_hires.webp" },
+  { sheet: "L15.20.R", title: "Planting Schedule - Understory", rev: "C", date: "2026-02-13", loaded: true, detail: "plans/261102_41_Understory_Schedule_L15.20.R_hires.webp" },
+  { sheet: "L15.30.A", title: "Planting Plan - Bulbs South", rev: "0", date: "2026-02-13", loaded: true, detail: "plans/261102_41_Bulbs_South_L15.30.A_hires.webp" },
+  { sheet: "L15.30.B", title: "Planting Plan - Bulbs North", rev: "0", date: "2026-02-13", loaded: true, detail: "plans/261102_41_Bulbs_North_L15.30.B_hires.webp" },
+  { sheet: "L16.01", title: "Pots and Containers - Orangerie", rev: "0", date: "2026-02-13", loaded: true, detail: "plans/261102_41_Pots_L16.01_hires.webp" },
+  { sheet: "L16.02", title: "Pots and Containers - Visitor Center", rev: "0", date: "2026-02-13", loaded: true, detail: "plans/261102_41_Pots_L16.02_hires.webp" },
+  { sheet: "L16.03", title: "Pots and Containers - Passage Garden North", rev: "0", date: "2026-02-13", loaded: true, detail: "plans/261102_41_Pots_L16.03_hires.webp" },
+  { sheet: "L16.04", title: "Pots and Containers - Passage Garden South", rev: "0", date: "2026-02-13", loaded: true, detail: "plans/261102_41_Pots_L16.04_hires.webp" },
+  { sheet: "L18.00", title: "Planting Details - 1", rev: "0", date: "2026-02-13", loaded: false },
+  { sheet: "L18.01", title: "Planting Details - 2", rev: "0", date: "2026-02-13", loaded: false },
+  { sheet: "L18.02", title: "Planting Details - 3", rev: "0", date: "2026-02-13", loaded: false },
+  { sheet: "L4.00", title: "Overall Materials Plan", rev: "0", date: "2026-02-13", loaded: false },
+  { sheet: "L5.00", title: "Overall Grading Plan", rev: "0", date: "2026-02-13", loaded: false },
+  { sheet: "L5.20", title: "Grading Plan Enlargement - Garden South", rev: "C", date: "2026-02-13", loaded: true, detail: "plans/261103_41_Grading_South_L5.20_hires.webp" },
+  { sheet: "L5.30", title: "Grading Plan Enlargement - Garden North", rev: "C", date: "2026-02-13", loaded: true, detail: "plans/261103_41_Grading_North_L5.30_hires.webp" },
+  { sheet: "L6.00", title: "Overall Layout Plan", rev: "0", date: "2026-02-13", loaded: false },
+  { sheet: "L7.01", title: "Details - Silva Cell", rev: "0", date: "2026-02-13", loaded: false },
+  { sheet: "L7.02", title: "Details - Paving", rev: "C", date: "2026-02-13", loaded: false },
+  { sheet: "L7.60", title: "Details - Site Amenities & Furnishings", rev: "0", date: "2026-02-13", loaded: false },
+  { sheet: "L8.00", title: "Overall Sleeving Plan", rev: "0", date: "2026-02-13", loaded: false },
+];
+
+
+function setPlantActionsVisible(show) {
+  const ps = document.getElementById('printSelect');
+  const ds = document.getElementById('downloadSelect');
+  if (ps) ps.style.display = show ? '' : 'none';
+  if (ds) ds.style.display = show ? '' : 'none';
+}
+
+function openTOC() {
+  currentGarden = "__TOC__";
+  setPlantActionsVisible(false);
+  document.getElementById("title").textContent = "Drawing TOC";
+  document.getElementById("panel").classList.add("open");
+  document.querySelectorAll(".btn").forEach(b => b.classList.remove("active"));
+  const content = document.getElementById("content");
+  let html = '<table class="toc-table"><thead><tr><th>Sheet</th><th>Title</th><th>Rev</th><th>Date</th></tr></thead><tbody>';
+  const sortedTOC = [...DRAWING_TOC].sort((a, b) => {
+    const pa = a.sheet.replace(/([0-9]+)/g, m => m.padStart(4, '0'));
+    const pb = b.sheet.replace(/([0-9]+)/g, m => m.padStart(4, '0'));
+    return pa.localeCompare(pb);
+  });
+  sortedTOC.forEach(s => {
+    if (s.loaded) {
+      html += `<tr><td class="loaded-cell"><a href="#" onclick="openPlan('${s.detail}','${s.sheet} ${s.title}','${s.rev}','${s.date}',null,0); return false;">${s.sheet}</a></td><td class="loaded-cell"><a href="#" onclick="openPlan('${s.detail}','${s.sheet} ${s.title}','${s.rev}','${s.date}',null,0); return false;">${s.title}</a></td><td class="rev">${s.rev}</td><td class="date">${s.date}</td></tr>`;
+    } else {
+      html += `<tr><td>${s.sheet}</td><td>${s.title}</td><td class="rev">${s.rev}</td><td class="date">${s.date}</td></tr>`;
+    }
+  });
+  html += '</tbody></table>';
+  content.innerHTML = html;
+}
+
+const SITE_SCHEDULES = [
+  { label: "Structure Schedule L15.10.Q", rev: "2", date: "2026-09-25", overview: "plans/261102_41_Structure_Schedule_L15.10.Q_hires.webp", detail: "plans/261102_41_Structure_Schedule_L15.10.Q_hires.webp" },
+  { label: "Understory Schedule L15.20.R", rev: "C", date: "2026-02-13", overview: "plans/261102_41_Understory_Schedule_L15.20.R_hires.webp", detail: "plans/261102_41_Understory_Schedule_L15.20.R_hires.webp" }
+];
+const BULBS_SOUTH = { label: "Bulbs South L15.30.A", rev: "0", date: "2026-02-13", overview: "plans/261102_41_Bulbs_South_L15.30.A_hires.webp", detail: "plans/261102_41_Bulbs_South_L15.30.A_hires.webp" };
+const BULBS_NORTH = { label: "Bulbs North L15.30.B", rev: "0", date: "2026-02-13", overview: "plans/261102_41_Bulbs_North_L15.30.B_hires.webp", detail: "plans/261102_41_Bulbs_North_L15.30.B_hires.webp" };
+const GRADING_SOUTH = { label: "Grading South L5.20", rev: "C", date: "2026-02-13", overview: "plans/261103_41_Grading_South_L5.20_hires.webp", detail: "plans/261103_41_Grading_South_L5.20_hires.webp" };
+const GRADING_NORTH = { label: "Grading North L5.30", rev: "C", date: "2026-02-13", overview: "plans/261103_41_Grading_North_L5.30_hires.webp", detail: "plans/261103_41_Grading_North_L5.30_hires.webp" };
+
+const GARDEN_PLANS = {
+  "Orangerie": [
+    { label: "Structure L15.10.A", rev: "2", date: "2026-09-25", overview: "plans/261102_41_Structure_L15.10.A_hires.webp", detail: "plans/261102_41_Structure_L15.10.A_hires.webp" },
+    { label: "Understory L15.20.A", rev: "C", date: "2026-02-13", overview: "plans/261101_41_OR_Understory_L15.20.A_hires.webp", detail: "plans/261101_41_OR_Understory_L15.20.A_hires.webp" },
+    { label: "Soils L12.70", rev: "1", date: "2026-07-31", overview: "plans/261101_41_Soils_L12.70_hires.webp", detail: "plans/261101_41_Soils_L12.70_hires.webp" },
+    { label: "Pots and Containers L16.01", rev: "0", date: "2026-02-13", overview: "plans/261102_41_Pots_L16.01_hires.webp", detail: "plans/261102_41_Pots_L16.01_hires.webp" },
+    GRADING_SOUTH],
+  "Fountain Garden": [
+    { label: "Structure L15.10.B", rev: "1", date: "2026-07-31", overview: "plans/261101_41_FT_Structure_L15.10.B_hires.webp", detail: "plans/261101_41_FT_Structure_L15.10.B_hires.webp" },
+    { label: "Understory L15.20.B", rev: "C", date: "2026-02-13", overview: "plans/261101_41_FT_Understory_L15.20.B_hires.webp", detail: "plans/261101_41_FT_Understory_L15.20.B_hires.webp" },
+    { label: "Soils L12.70", rev: "1", date: "2026-07-31", overview: "plans/261101_41_Soils_L12.70_hires.webp", detail: "plans/261101_41_Soils_L12.70_hires.webp" },
+    BULBS_SOUTH,
+    GRADING_SOUTH],
+  "Walled Garden": [
+    { label: "Structure L15.10.C", rev: "0", date: "2026-02-13", overview: "plans/261101_41_WL_Structure_L15.10.C_hires.webp", detail: "plans/261101_41_WL_Structure_L15.10.C_hires.webp" },
+    { label: "Understory L15.20.C1", rev: "0", date: "2026-02-13", overview: "plans/261101_41_WL_Understory_L15.20.C1_hires.webp", detail: "plans/261101_41_WL_Understory_L15.20.C1_hires.webp" },
+    { label: "Understory Option L15.20.C2", rev: "0", date: "2026-02-13", overview: "plans/261101_41_WL_Understory_L15.20.C2_hires.webp", detail: "plans/261101_41_WL_Understory_L15.20.C2_hires.webp" },
+    { label: "Soils L12.80", rev: "1", date: "2026-07-31", overview: "plans/261101_41_WT_Soils_L12.80_hires.webp", detail: "plans/261101_41_WT_Soils_L12.80_hires.webp" },
+    BULBS_NORTH,
+    GRADING_NORTH],
+  "Overlook": [
+    { label: "Structure L15.10.E", rev: "2", date: "2026-09-25", overview: "plans/261102_41_Structure_L15.10.E_hires.webp", detail: "plans/261102_41_Structure_L15.10.E_hires.webp" },
+    { label: "Understory L15.20.E", rev: "0", date: "2026-02-13", overview: "plans/261101_41_OL_Understory_L15.20.E_hires.webp", detail: "plans/261101_41_OL_Understory_L15.20.E_hires.webp" },
+    { label: "Soils L12.70", rev: "1", date: "2026-07-31", overview: "plans/261101_41_Soils_L12.70_hires.webp", detail: "plans/261101_41_Soils_L12.70_hires.webp" },
+    BULBS_SOUTH,
+    GRADING_SOUTH],
+  "Rockery": [
+    { label: "Structure L15.10.F", rev: "2", date: "2026-09-25", overview: "plans/261102_41_Structure_L15.10.F_hires.webp", detail: "plans/261102_41_Structure_L15.10.F_hires.webp" },
+    { label: "Understory L15.20.F", rev: "C", date: "2026-02-13", overview: "plans/261101_41_RK_Understory_L15.20.F_hires.webp", detail: "plans/261101_41_RK_Understory_L15.20.F_hires.webp" },
+    { label: "Soils L12.80", rev: "1", date: "2026-07-31", overview: "plans/261101_41_WT_Soils_L12.80_hires.webp", detail: "plans/261101_41_WT_Soils_L12.80_hires.webp" },
+    BULBS_NORTH,
+    GRADING_NORTH],
+  "Water Terrace": [
+    { label: "Structure L15.10.D", rev: "2", date: "2026-09-25", overview: "plans/261102_41_Structure_L15.10.D_hires.webp", detail: "plans/261102_41_Structure_L15.10.D_hires.webp" },
+    { label: "Understory L15.20.D", rev: "C", date: "2026-02-13", overview: "plans/261101_41_WT_Understory_L15.20.D_hires.webp", detail: "plans/261101_41_WT_Understory_L15.20.D_hires.webp" },
+    { label: "Soils L12.80", rev: "1", date: "2026-07-31", overview: "plans/261101_41_WT_Soils_L12.80_hires.webp", detail: "plans/261101_41_WT_Soils_L12.80_hires.webp" },
+    GRADING_NORTH],
+  "Wonderland": [
+    { label: "Structure L15.10.I", rev: "2", date: "2026-09-25", overview: "plans/261102_41_Structure_L15.10.I_hires.webp", detail: "plans/261102_41_Structure_L15.10.I_hires.webp" },
+    { label: "Hedge Enlargement L15.10.II", rev: "0", date: "2026-02-13", overview: "plans/261101_41_WH_Structure_L15.10.II_hires.webp", detail: "plans/261101_41_WH_Structure_L15.10.II_hires.webp" },
+    { label: "Understory L15.20.I", rev: "C", date: "2026-02-13", overview: "plans/261101_41_WD_Understory_L15.20.I_hires.webp", detail: "plans/261101_41_WD_Understory_L15.20.I_hires.webp" },
+    { label: "Soils L12.70", rev: "1", date: "2026-07-31", overview: "plans/261101_41_Soils_L12.70_hires.webp", detail: "plans/261101_41_Soils_L12.70_hires.webp" },
+    { label: "Soils L12.80", rev: "1", date: "2026-07-31", overview: "plans/261101_41_WT_Soils_L12.80_hires.webp", detail: "plans/261101_41_WT_Soils_L12.80_hires.webp" },
+    BULBS_SOUTH,
+    BULBS_NORTH,
+    GRADING_SOUTH,
+    GRADING_NORTH],
+  "Mirror Garden": [
+    { label: "Structure L15.10.J", rev: "2", date: "2026-09-25", overview: "plans/261102_41_MR_Structure_L15.10.J_hires.webp", detail: "plans/261102_41_MR_Structure_L15.10.J_hires.webp" },
+    { label: "Understory L15.20.J", rev: "0", date: "2026-02-13", overview: "plans/261102_41_MR_Understory_L15.20.J_hires.webp", detail: "plans/261102_41_MR_Understory_L15.20.J_hires.webp" },
+    { label: "Soils L12.70", rev: "1", date: "2026-07-31", overview: "plans/261101_41_Soils_L12.70_hires.webp", detail: "plans/261101_41_Soils_L12.70_hires.webp" },
+    BULBS_SOUTH,
+    GRADING_SOUTH],
+  "Passage": [
+    { label: "Structure North L15.10.K", rev: "2", date: "2026-09-25", overview: "plans/261102_41_PN_Structure_L15.10.K_hires.webp", detail: "plans/261102_41_PN_Structure_L15.10.K_hires.webp" },
+    { label: "Structure South L15.10.L", rev: "2", date: "2026-09-25", overview: "plans/261102_41_PS_Structure_L15.10.L_hires.webp", detail: "plans/261102_41_PS_Structure_L15.10.L_hires.webp" },
+    { label: "Understory North L15.20.K", rev: "0", date: "2026-02-13", overview: "plans/261102_41_PN_Understory_L15.20.K_hires.webp", detail: "plans/261102_41_PN_Understory_L15.20.K_hires.webp" },
+    { label: "Understory South L15.20.L", rev: "0", date: "2026-02-13", overview: "plans/261102_41_PS_Understory_L15.20.L_hires.webp", detail: "plans/261102_41_PS_Understory_L15.20.L_hires.webp" },
+    { label: "Soils L12.70", rev: "1", date: "2026-07-31", overview: "plans/261101_41_Soils_L12.70_hires.webp", detail: "plans/261101_41_Soils_L12.70_hires.webp" },
+    { label: "Pots and Containers L16.03", rev: "0", date: "2026-02-13", overview: "plans/261102_41_Pots_L16.03_hires.webp", detail: "plans/261102_41_Pots_L16.03_hires.webp" },
+    { label: "Pots and Containers L16.04", rev: "0", date: "2026-02-13", overview: "plans/261102_41_Pots_L16.04_hires.webp", detail: "plans/261102_41_Pots_L16.04_hires.webp" },
+    BULBS_SOUTH,
+    GRADING_SOUTH],
+  "Maintenance": [
+    { label: "Structure L15.10.M", rev: "2", date: "2026-09-25", overview: "plans/261102_41_MN_Structure_L15.10.M_hires.webp", detail: "plans/261102_41_MN_Structure_L15.10.M_hires.webp" },
+    { label: "Understory L15.20.M", rev: "0", date: "2026-02-13", overview: "plans/261102_41_MN_Understory_L15.20.M_hires.webp", detail: "plans/261102_41_MN_Understory_L15.20.M_hires.webp" },
+    { label: "Soils L12.70", rev: "1", date: "2026-07-31", overview: "plans/261101_41_Soils_L12.70_hires.webp", detail: "plans/261101_41_Soils_L12.70_hires.webp" },
+    { label: "Soils L12.80", rev: "1", date: "2026-07-31", overview: "plans/261101_41_WT_Soils_L12.80_hires.webp", detail: "plans/261101_41_WT_Soils_L12.80_hires.webp" },
+    GRADING_SOUTH,
+    GRADING_NORTH],
+  "Beltline": [
+    { label: "Structure North L15.10.G", rev: "2", date: "2026-09-25", overview: "plans/261102_41_Structure_L15.10.G_hires.webp", detail: "plans/261102_41_Structure_L15.10.G_hires.webp" },
+    { label: "Structure South L15.10.H", rev: "2", date: "2026-09-25", overview: "plans/261102_41_Structure_L15.10.H_hires.webp", detail: "plans/261102_41_Structure_L15.10.H_hires.webp" },
+    { label: "Understory North L15.20.G", rev: "C", date: "2026-02-13", overview: "plans/261101_41_BN_Understory_L15.20.G_hires.webp", detail: "plans/261101_41_BN_Understory_L15.20.G_hires.webp" },
+    { label: "Understory South L15.20.H", rev: "C", date: "2026-02-13", overview: "plans/261101_41_BS_Understory_L15.20.H_hires.webp", detail: "plans/261101_41_BS_Understory_L15.20.H_hires.webp" },
+    { label: "Soils L12.80", rev: "1", date: "2026-07-31", overview: "plans/261101_41_WT_Soils_L12.80_hires.webp", detail: "plans/261101_41_WT_Soils_L12.80_hires.webp" },
+    BULBS_NORTH,
+    GRADING_NORTH],
+  "Piedmont": [
+    { label: "Structure L15.10.N", rev: "1", date: "2026-07-31", overview: "plans/261102_41_PD_Structure_L15.10.N_hires.webp", detail: "plans/261102_41_PD_Structure_L15.10.N_hires.webp" },
+    { label: "Understory L15.20.N", rev: "1", date: "2026-07-31", overview: "plans/261101_41_PD_Understory_L15.20.N_hires.webp", detail: "plans/261101_41_PD_Understory_L15.20.N_hires.webp" },
+    { label: "Soils L12.70", rev: "1", date: "2026-07-31", overview: "plans/261101_41_Soils_L12.70_hires.webp", detail: "plans/261101_41_Soils_L12.70_hires.webp" },
+    { label: "Soils L12.80", rev: "1", date: "2026-07-31", overview: "plans/261101_41_WT_Soils_L12.80_hires.webp", detail: "plans/261101_41_WT_Soils_L12.80_hires.webp" },
+    GRADING_SOUTH,
+    GRADING_NORTH],
+  "Shuttle Path": [
+    { label: "Structure L15.10.O", rev: "1", date: "2026-07-31", overview: "plans/261102_41_SH_Structure_L15.10.O_hires.webp", detail: "plans/261102_41_SH_Structure_L15.10.O_hires.webp" },
+    { label: "Understory L15.20.O", rev: "0", date: "2026-02-13", overview: "plans/261101_41_SH_Understory_L15.20.O_hires.webp", detail: "plans/261101_41_SH_Understory_L15.20.O_hires.webp" },
+    { label: "Soils L12.60", rev: "C", date: "2026-02-13", overview: "plans/261101_41_Soils_L12.60_hires.webp", detail: "plans/261101_41_Soils_L12.60_hires.webp" }
+  ],
+  "Access Road": [
+    { label: "Structure L15.10.P", rev: "2", date: "2026-09-25", overview: "plans/261102_41_SV_Structure_L15.10.P_hires.webp", detail: "plans/261102_41_SV_Structure_L15.10.P_hires.webp" },
+    { label: "Understory L15.20.P", rev: "1", date: "2026-07-31", overview: "plans/261101_41_SV_Understory_L15.20.P_hires.webp", detail: "plans/261101_41_SV_Understory_L15.20.P_hires.webp" },
+    { label: "Soils L12.90", rev: "1", date: "2026-07-31", overview: "plans/261101_41_Soils_L12.90_hires.webp", detail: "plans/261101_41_Soils_L12.90_hires.webp" }
+  ],
+  "Visitor Center": [
+    { label: "Understory L15.20.Q", rev: "0", date: "2026-02-13", overview: "plans/261101_41_VC_Understory_L15.20.Q_hires.webp", detail: "plans/261101_41_VC_Understory_L15.20.Q_hires.webp" },
+    { label: "Soils L12.81", rev: "C", date: "2026-02-13", overview: "plans/261101_41_Soils_L12.81_hires.webp", detail: "plans/261101_41_Soils_L12.81_hires.webp" },
+    { label: "Pots and Containers L16.02", rev: "0", date: "2026-02-13", overview: "plans/261102_41_Pots_L16.02_hires.webp", detail: "plans/261102_41_Pots_L16.02_hires.webp" }
+  ]
+};
+let DATA = null;
+let PRESENT = new Set();
+let currentGarden = null;
+
+(function initAuth() {
+  const role = storeGet(AUTH_KEY);
+  if (role === 'user' || role === 'admin') openApp(role);
+})();
+
+function pdfHref(id) { return '05_PDFs/' + id + '.pdf'; }
+function hasSheet(id) { return PRESENT.has(id + '.pdf') || PRESENT.has(id); }
+
+function nameCell(id, plant) {
+  const name = plant.display || plant.name || id;
+  const nameHtml = hasSheet(id)
+    ? (() => {
+        const pub = plant.published ? `<span class="pub-date">${plant.published}</span>` : '';
+        return `<a href="#" onclick="openPlantDetail('${id}'); return false;" style="color:inherit; text-decoration:underline;">${name}</a>${pub}`;
+      })()
+    : `<span class="pending">${name}</span><span class="pending-tag">sheet pending</span>`;
+  return `<div class="plant-name-cell">${nameHtml}</div>`;
+}
+
+function openPlantDetail(id) {
+  const plant = DATA.plants[id];
+  if (!plant) return;
+  const name = plant.display || plant.name || id;
+  const tagged = (plant.photos && plant.photos.tagged) || [];
+  const asbuilt = (plant.photos && plant.photos.asbuilt) || {};
+  const sheet = hasSheet(id);
+  let html = `<h3 style="margin:0 0 12px; color:var(--olive);">${name}</h3>`;
+  if (sheet) {
+    const thumb = 'pdf-thumbs/' + id + '.jpg';
+    html += `<a href="${pdfHref(id)}" style="display:block; margin:0 0 16px; text-decoration:none; color:var(--charcoal);">
+      <div style="width:100%; max-width:280px; background:#f4f4f4; border-radius:6px; border:1.1px solid #b0b0b0; overflow:hidden;">
+        <img src="${thumb}" alt="Plant ID sheet preview" style="width:100%; height:auto; object-fit:contain; display:block; border-radius:6px;">
+      </div>
+      <span style="display:block; margin-top:6px; font-size:13px; font-weight:600; color:var(--olive);">Plant ID sheet</span>
+    </a>`;
+  } else {
+    html += `<p style="color:#666; margin:0 0 16px;">Sheet pending</p>`;
+  }
+  if (tagged.length) {
+    html += `<h4 style="margin:12px 0 8px; color:var(--charcoal);">Tagged</h4><div style="display:flex; flex-wrap:wrap; gap:8px;">`;
+    tagged.forEach(src => {
+      html += `<a href="${src}"><img src="${src}" alt="Tagged" style="width:120px; height:90px; object-fit:cover; border-radius:6px; border:1.1px solid #b0b0b0;"></a>`;
+    });
+    html += `</div>`;
+  }
+  const asbuiltGardens = Object.keys(asbuilt).filter(g => Array.isArray(asbuilt[g]) && asbuilt[g].length);
+  if (asbuiltGardens.length) {
+    html += `<h4 style="margin:16px 0 8px; color:var(--charcoal);">As-built</h4>`;
+    asbuiltGardens.sort().forEach(g => {
+      html += `<div style="margin:0 0 10px;"><div style="font-size:13px; font-weight:600; color:var(--olive); margin-bottom:4px;">${g}</div><div style="display:flex; flex-wrap:wrap; gap:8px;">`;
+      asbuilt[g].forEach(src => {
+        html += `<a href="${src}"><img src="${src}" alt="As-built ${g}" style="width:120px; height:90px; object-fit:cover; border-radius:6px; border:1.1px solid #b0b0b0;"></a>`;
+      });
+      html += `</div></div>`;
+    });
+  }
+  if (!tagged.length && !asbuiltGardens.length) {
+    html += `<p style="color:#666;">No photos yet.</p>`;
+  }
+  html += `<button type="button" onclick="closePlantDetail()" style="margin-top:20px; background:var(--rust); color:#fff; border:none; padding:8px 16px; border-radius:4px; cursor:pointer;">Close</button>`;
+  let overlay = document.getElementById("plantDetailOverlay");
+  if (!overlay) {
+    overlay = document.createElement("div");
+    overlay.id = "plantDetailOverlay";
+    overlay.style.cssText = "position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:1000; display:flex; align-items:center; justify-content:center;";
+    overlay.innerHTML = `<div id="plantDetailBox" style="background:#fff; max-width:520px; width:90%; max-height:80vh; overflow:auto; padding:20px; border-radius:8px; box-shadow:0 4px 24px rgba(0,0,0,.2);"></div>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener("click", e => { if (e.target === overlay) closePlantDetail(); });
+  }
+  document.getElementById("plantDetailBox").innerHTML = html;
+  overlay.style.display = "flex";
+}
+
+function closePlantDetail() {
+  const o = document.getElementById("plantDetailOverlay");
+  if (o) o.style.display = "none";
+}
+
+async function load() {
+  const res = await fetch(DATA_FILE);
+  DATA = await res.json();
+  try {
+    const s = await fetch(STATUS_FILE);
+    const status = await s.json();
+    if (Array.isArray(status.present)) {
+      PRESENT = new Set(status.present);
+    } else if (status && typeof status === 'object') {
+      // Flat { id: true/false } shape — keep only true entries
+      PRESENT = new Set(Object.keys(status).filter(k => status[k] === true));
+    } else {
+      PRESENT = new Set();
+    }
+  } catch (e) {
+    PRESENT = new Set();
+  }
+  const ver = DATA.version || DATA_VERSION;
+  const pdfCount = PRESENT.size;
+  document.getElementById('versionFooter').textContent = 'Data: ' + ver + ' | PDFs present: ' + pdfCount + ' | Missing sheets show “sheet pending” | Full botanical and common names';
+  renderCounts();
+  const gf = document.getElementById('gardenFilter');
+  [...gardenOrder].sort().forEach(g => { const o = document.createElement('option'); o.value = g; o.textContent = g; gf.appendChild(o); });
+  const typeOrder = ['Tree', 'Shrub', 'Groundcover', 'Vine', 'Bulb', 'Planter'];
+  const typeLabels = { Tree: 'Trees', Shrub: 'Shrubs', Groundcover: 'Groundcovers', Vine: 'Vines', Bulb: 'Bulbs', Planter: 'Planters' };
+  const presentTypes = new Set(Object.values(DATA.plants).map(p => p.type));
+  const tf = document.getElementById('typeFilter');
+  typeOrder.forEach(t => {
+    if (presentTypes.has(t)) {
+      const o = document.createElement('option');
+      o.value = t;
+      o.textContent = typeLabels[t] || t;
+      tf.appendChild(o);
+    }
+  });
+}
+
+function renderCounts() {
+  if (!DATA || !DATA.plants) return;
+  const counts = {};
+  let totalQty = 0;
+  Object.values(DATA.plants).forEach(p => {
+    if (p.skip) return;
+    const t = p.type || 'Other';
+    counts[t] = (counts[t] || 0) + 1;
+    if (p.gardens) {
+      Object.values(p.gardens).forEach(rows => {
+        if (Array.isArray(rows)) {
+          rows.forEach(r => {
+            if (String(r.size || '').trim().toUpperCase() === 'SF') return;
+            totalQty += Number(r.qty) || 0;
+          });
+        }
+      });
+    }
+  });
+  const order = ['Tree', 'Shrub', 'Groundcover', 'Planter', 'Bulb', 'Vine'];
+  const parts = order.filter(t => counts[t]).map(t => {
+    const label = t === 'Tree' ? 'Trees' : t === 'Shrub' ? 'Shrubs' : t === 'Groundcover' ? 'Groundcovers' : t === 'Planter' ? 'Planters' : t === 'Bulb' ? 'Bulbs' : t === 'Vine' ? 'Vines' : t;
+    return `<span><a href="#" onclick="filterByType('${t}'); return false;"><strong>${counts[t]}</strong> ${label}</a></span>`;
+  });
+  const unique = Object.values(counts).reduce((s, n) => s + n, 0);
+  const totalStr = Math.round(totalQty).toLocaleString();
+  document.getElementById('countsStrip').innerHTML = parts.join('') + `<span style="margin-left:auto;"><strong>${unique}</strong> unique plants · <strong>${totalStr}</strong> total plants</span>`;
+}
+
+function filterByType(type) {
+  showSearch();
+  document.getElementById('typeFilter').value = type;
+  document.getElementById('q').value = '';
+  document.getElementById('gardenFilter').value = '';
+  runSearch();
+}
+
+function openPanel(garden) {
+  currentGarden = garden;
+  setPlantActionsVisible(true);
+  document.getElementById('title').textContent = garden;
+  document.getElementById('panel').classList.add('open');
+  document.querySelectorAll('.btn').forEach(b => b.classList.toggle('active', b.dataset.garden === garden));
+  const content = document.getElementById('content');
+  const g = DATA && DATA.gardens && DATA.gardens[garden];
+  if (!g) { content.innerHTML = '<p>No plant list for this garden in the data file.</p>'; return; }
+  let html = '';
+  const plans = (GARDEN_PLANS[garden] || []).concat(SITE_SCHEDULES);
+  plans.sort((a, b) => {
+    const extract = (label) => {
+      const m = label.match(/L(\d+(?:\.\d+)*(?:\.[A-Z])?)/i);
+      return m ? m[1] : label;
+    };
+    return extract(a.label).localeCompare(extract(b.label), undefined, { numeric: true });
+  });
+  if (plans && plans.length) {
+    html += '<div class="plans-bar" style="margin:0 0 12px; padding:8px; background:#f7f5f2; border-radius:6px;">';
+    html += '<div style="font-size:13px; font-weight:600; color:var(--olive); margin-bottom:6px;">Plans</div>';
+    plans.forEach((p, i) => {
+      const rev = p.rev ? `Rev ${p.rev}` : '';
+      const date = p.date || '';
+      const safeLabel = (p.label || '').replace(/'/g, "\\'");
+      html += `<button type="button" onclick="openPlan('${p.detail}','${safeLabel}','${rev}','${date}', window._currentPlans, ${i})" style="display:flex; width:100%; margin:4px 0; min-height:44px; align-items:center; padding:8px 10px; background:var(--rust); color:#fff; border:none; border-radius:4px; font-weight:600; font-size:14px; text-align:left;">
+        <span style="flex:1;">${p.label}</span>
+        <span style="font-weight:400; font-size:10px; opacity:0.85; text-align:right; line-height:1.15; letter-spacing:0.01em;">${rev}<br>${date}</span>
+      </button>`;
+    });
+    window._currentPlans = plans;
+    html += '</div>';
+  }
+  const sectionOrder = ['Trees', 'Shrubs', 'Groundcovers', 'Planters', 'Bulbs', 'Vines', 'Other'];
+  const ordered = [...sectionOrder.filter(s => g[s]), ...Object.keys(g).filter(s => !sectionOrder.includes(s))];
+  for (const section of ordered) {
+    const rows = g[section];
+    const merged = {};
+    rows.forEach(r => {
+      const id = r.id;
+      if (!merged[id]) merged[id] = { qty: 0, sizes: [], plantQty: 0 };
+      merged[id].qty += (parseInt(r.qty, 10) || 0);
+      if (String(r.size || '').trim().toUpperCase() !== 'SF') {
+        merged[id].plantQty += (parseInt(r.qty, 10) || 0);
+      }
+      if (r.size && !merged[id].sizes.includes(r.size)) merged[id].sizes.push(r.size);
+    });
+    const total = Object.values(merged).reduce((s, m) => s + (m.plantQty || 0), 0);
+    html += `<h3>${section} <span style="font-weight:400;color:#666;">(${total})</span></h3><table>`;
+    const sorted = Object.entries(merged).sort((a, b) => {
+      const pa = DATA.plants[a[0]] || {};
+      const pb = DATA.plants[b[0]] || {};
+      const na = (pa.display || pa.name || a[0]).toLowerCase();
+      const nb = (pb.display || pb.name || b[0]).toLowerCase();
+      return na.localeCompare(nb);
+    });
+    for (const [id, m] of sorted) {
+      const plant = DATA.plants[id] || {};
+      const sizeStr = m.sizes.join(', ');
+      const hay = ((plant.botanical || '') + ' ' + (plant.common || '') + ' ' + (plant.display || '') + ' ' + (plant.name || '')).toLowerCase().replace(/"/g, '');
+    html += `<tr data-plant="${hay}"><td class="qty">${m.qty}</td><td>${nameCell(id, plant)}</td><td class="size">${sizeStr}</td></tr>`;
+    }
+    html += '</table>';
+  }
+  html += '<p class="note">Click a plant name to open its ID sheet. Full botanical and common names, including cultivar and variety. Sheets not yet dropped show “sheet pending.” Plan buttons open the matching sheet. Pinch to zoom, drag to pan.</p>';
+  content.innerHTML = html;
+}
+
+function formatPlanTitle(label) {
+  const map = {
+    "Structure Schedule L15.10.Q": ["Planting Schedule", "Structure", "L15.10.Q"],
+    "Understory Schedule L15.20.R": ["Planting Schedule", "Understory", "L15.20.R"],
+    "Bulbs South L15.30.A": ["Planting Plan", "Bulbs South", "L15.30.A"],
+    "Bulbs North L15.30.B": ["Planting Plan", "Bulbs North", "L15.30.B"],
+    "Grading South L5.20": ["Grading Plan", "Garden South", "L5.20"],
+    "Grading North L5.30": ["Grading Plan", "Garden North", "L5.30"],
+    "Structure L15.10.A": ["Planting Plan Structure", "Orangerie", "L15.10.A"],
+    "Structure L15.10.B": ["Planting Plan Structure", "Fountain Garden", "L15.10.B"],
+    "Structure L15.10.C": ["Planting Plan Structure", "Walled Garden", "L15.10.C"],
+    "Structure L15.10.D": ["Planting Plan Structure", "Water Terraces", "L15.10.D"],
+    "Structure L15.10.E": ["Planting Plan Structure", "Overlook Garden", "L15.10.E"],
+    "Structure L15.10.F": ["Planting Plan Structure", "Rockery", "L15.10.F"],
+    "Structure North L15.10.G": ["Planting Plan Structure", "Beltline North", "L15.10.G"],
+    "Structure South L15.10.H": ["Planting Plan Structure", "Beltline South", "L15.10.H"],
+    "Structure L15.10.I": ["Planting Plan Structure", "Wonderland", "L15.10.I"],
+    "Structure L15.10.J": ["Planting Plan Structure", "Mirror Garden", "L15.10.J"],
+    "Structure North L15.10.K": ["Planting Plan Structure", "Passage Garden North", "L15.10.K"],
+    "Structure South L15.10.L": ["Planting Plan Structure", "Passage Garden South", "L15.10.L"],
+    "Structure L15.10.M": ["Planting Plan Structure", "Maintenance Area", "L15.10.M"],
+    "Structure L15.10.N": ["Planting Plan Structure", "Piedmont Streetscape", "L15.10.N"],
+    "Structure L15.10.O": ["Planting Plan Structure", "Shuttle Path", "L15.10.O"],
+    "Structure L15.10.P": ["Planting Plan Structure", "Service Drive", "L15.10.P"],
+    "Understory L15.20.A": ["Planting Plan Understory", "Orangerie", "L15.20.A"],
+    "Understory L15.20.B": ["Planting Plan Understory", "Fountain Garden", "L15.20.B"],
+    "Understory L15.20.C1": ["Planting Plan Understory", "Walled Garden", "L15.20.C1"],
+    "Understory Option L15.20.C2": ["Planting Plan Understory", "Walled Garden Option 2", "L15.20.C2"],
+    "Understory L15.20.D": ["Planting Plan Understory", "Water Terraces", "L15.20.D"],
+    "Understory L15.20.E": ["Planting Plan Understory", "Overlook Garden", "L15.20.E"],
+    "Understory L15.20.F": ["Planting Plan Understory", "Rockery", "L15.20.F"],
+    "Understory L15.20.G": ["Planting Plan Understory", "Beltline North", "L15.20.G"],
+    "Understory South L15.20.H": ["Planting Plan Understory", "Beltline South", "L15.20.H"],
+    "Understory L15.20.J": ["Planting Plan Understory", "Mirror Garden", "L15.20.J"],
+    "Understory North L15.20.K": ["Planting Plan Understory", "Passage Garden North", "L15.20.K"],
+    "Understory South L15.20.L": ["Planting Plan Understory", "Passage Garden South", "L15.20.L"],
+    "Understory L15.20.M": ["Planting Plan Understory", "Maintenance Area", "L15.20.M"],
+    "Understory L15.20.N": ["Planting Plan Understory", "Piedmont Streetscape", "L15.20.N"],
+    "Understory L15.20.O": ["Planting Plan Understory", "Shuttle Path", "L15.20.O"],
+    "Understory L15.20.P": ["Planting Plan Understory", "Service Drive", "L15.20.P"],
+    "Understory L15.20.Q": ["Planting Plan Understory", "Visitor Center", "L15.20.Q"],
+    "Soils L12.70": ["Soils Plan", "Garden South", "L12.70"],
+    "Soils L12.80": ["Soils Plan", "Garden North", "L12.80"],
+    "Soils L12.90": ["Soils Plan", "Westminster Road", "L12.90"],
+    "Soils L12.60": ["Soils Plan", "Shuttle Path", "L12.60"],
+    "Soils L12.81": ["Soils Plan", "Green Roof Enlargement", "L12.81"],
+    "Pots and Containers L16.01": ["Pots and Containers", "Orangerie", "L16.01"],
+    "Pots and Containers L16.02": ["Pots and Containers", "Visitor Center", "L16.02"],
+    "Pots and Containers L16.03": ["Pots and Containers", "Passage Garden North", "L16.03"],
+    "Pots and Containers L16.04": ["Pots and Containers", "Passage Garden South", "L16.04"]
+  };
+  const parts = map[label];
+  if (parts) {
+    return parts.map((p, i) => `<div style="font-size:${i === 2 ? '11px' : '13px'}; opacity:${i === 2 ? '0.8' : '1'};">${p}</div>`).join('');
+  }
+  return label;
+}
+
+let currentPlanList = [];
+let currentPlanIndex = 0;
+let planScale = 1;
+let planFit = 1;
+let planPanX = 0;
+let planPanY = 0;
+
+function sheetSortKey(s) {
+  return String(s || '').replace(/([0-9]+)/g, m => m.padStart(4, '0'));
+}
+function getAllLoadedPlans() {
+  return DRAWING_TOC.filter(s => s.loaded && s.detail)
+    .sort((a, b) => sheetSortKey(a.sheet).localeCompare(sheetSortKey(b.sheet)))
+    .map(s => ({ detail: s.detail, label: s.sheet + ' ' + s.title, rev: s.rev, date: s.date, sheet: s.sheet }));
+}
+function openPlan(src, label, rev, date, planList, index) {
+  // Garden path: use the garden's plan list. TOC path (planList null): single sheet, no arrows.
+  if (Array.isArray(planList) && planList.length) {
+    currentPlanList = planList;
+    let idx = typeof index === 'number' && index >= 0 && index < planList.length ? index : planList.findIndex(p => p.detail === src);
+    if (idx < 0) idx = 0;
+    currentPlanIndex = idx;
+  } else {
+    currentPlanList = [{ detail: src, label: label, rev: rev, date: date }];
+    currentPlanIndex = 0;
+  }
+  planScale = 1;
+  planPanX = 0;
+  planPanY = 0;
+
+  let overlay = document.getElementById('planOverlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'planOverlay';
+    overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:40; display:flex; flex-direction:column;';
+    overlay.innerHTML = `
+      <div style="display:flex; gap:8px; padding:10px; background:#1F2A2F; align-items:center; flex-shrink:0;">
+        <div style="display:flex; align-items:center; gap:10px; flex:1; min-width:0;">
+          <span id="planTitle" style="color:#fff; font-weight:600; line-height:1.2; flex:1; min-width:0;"></span>
+          <span id="planRev" style="color:#fff; font-size:12px; font-weight:400; text-align:left; line-height:1.2; opacity:0.9; white-space:nowrap;"></span>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px; flex:0 0 auto;">
+          <button type="button" id="planPrev" style="min-height:48px; min-width:48px; padding:0; background:var(--rust); color:#fff; border:none; border-radius:4px; font-size:22px; font-weight:700;" aria-label="Previous plan">‹</button>
+          <button type="button" id="planNext" style="min-height:48px; min-width:48px; padding:0; background:var(--rust); color:#fff; border:none; border-radius:4px; font-size:22px; font-weight:700;" aria-label="Next plan">›</button>
+        </div>
+        <button type="button" id="planPrintBtn" style="min-height:44px; min-width:80px; padding:8px 16px; background:var(--olive); color:#fff; border:none; border-radius:4px; font-weight:600; margin-left:4px;">Print</button>
+        <button type="button" id="planCloseBtn" style="min-height:44px; min-width:100px; padding:8px 24px; background:#666; color:#fff; border:none; border-radius:4px; font-weight:600;">Close</button>
+      </div>
+      <div id="planScroll" style="flex:1; overflow:hidden; background:#111; position:relative; touch-action:none; cursor:grab;">
+        <img id="planImg" style="position:absolute; left:50%; top:50%; transform:translate(-50%,-50%) scale(1); transform-origin:center center; max-width:none; user-select:none; -webkit-user-drag:none;" alt="">
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.querySelector('#planCloseBtn').onclick = () => overlay.style.display = 'none';
+    overlay.querySelector('#planPrintBtn').onclick = () => {
+      const img = overlay.querySelector('#planImg');
+      const w = window.open('', '_blank');
+      w.document.write(`<html><head><title>Print Plan</title>
+        <style>body{margin:0;background:#fff;} .back{position:fixed;top:8px;left:8px;z-index:10;padding:12px 18px;background:#3A5F3A;color:#fff;border:none;border-radius:4px;font-weight:600;font-size:16px;}</style>
+      </head><body style="margin:0;">
+        <button class="back" onclick="if(history.length>1)history.back();else window.close();">Back</button>
+        <img src="${img.src}" style="width:100%;">
+        <script>
+          var sx=0, sy=0;
+          document.addEventListener('touchstart', function(e){ if(e.touches&&e.touches[0]){ sx=e.touches[0].clientX; sy=e.touches[0].clientY; } }, {passive:true});
+          document.addEventListener('touchend', function(e){
+            if(!e.changedTouches||!e.changedTouches[0]) return;
+            var dx = e.changedTouches[0].clientX - sx;
+            var dy = e.changedTouches[0].clientY - sy;
+            if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) && dx < 0) {
+              if (history.length > 1) history.back(); else window.close();
+            }
+          });
+        <\/script>
+      </body></html>`);
+      w.document.close();
+      w.focus();
+      setTimeout(function(){ try { w.print(); } catch(e) {} }, 300);
+    };
+    overlay.querySelector('#planPrev').onclick = () => pagePlan(-1);
+    overlay.querySelector('#planNext').onclick = () => pagePlan(1);
+
+    const scroll = overlay.querySelector('#planScroll');
+    const img = overlay.querySelector('#planImg');
+    let drag = null;
+    let pinch = null;
+
+    function applyTransform() {
+      img.style.transform = `translate(calc(-50% + ${planPanX}px), calc(-50% + ${planPanY}px)) scale(${planScale})`;
+    }
+
+    scroll.addEventListener('wheel', e => {
+      e.preventDefault();
+      const factor = e.deltaY < 0 ? 1.05 : 0.95;
+      planScale = Math.max(planFit * 0.5, Math.min(Math.max(planFit * 8, 1.5), planScale * factor));
+      applyTransform();
+    }, { passive: false });
+
+    scroll.addEventListener('pointerdown', e => {
+      if (e.pointerType === 'touch' && scroll.setPointerCapture) return;
+      drag = { x: e.clientX - planPanX, y: e.clientY - planPanY };
+      scroll.style.cursor = 'grabbing';
+    });
+    window.addEventListener('pointermove', e => {
+      if (!drag) return;
+      planPanX = e.clientX - drag.x;
+      planPanY = e.clientY - drag.y;
+      applyTransform();
+    });
+    window.addEventListener('pointerup', () => { drag = null; scroll.style.cursor = 'grab'; });
+
+    scroll.addEventListener('touchstart', e => {
+      if (e.touches.length === 2) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        pinch = { dist: Math.hypot(dx, dy), scale: planScale };
+      } else if (e.touches.length === 1) {
+        drag = { x: e.touches[0].clientX - planPanX, y: e.touches[0].clientY - planPanY };
+      }
+    }, { passive: true });
+    scroll.addEventListener('touchmove', e => {
+      if (e.touches.length === 2 && pinch) {
+        e.preventDefault();
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const dist = Math.hypot(dx, dy);
+        const ratio = dist / pinch.dist; const damped = 1 + (ratio - 1) * 0.35; planScale = Math.max(planFit * 0.5, Math.min(Math.max(planFit * 8, 1.5), pinch.scale * damped));
+        applyTransform();
+      } else if (e.touches.length === 1 && drag) {
+        planPanX = e.touches[0].clientX - drag.x;
+        planPanY = e.touches[0].clientY - drag.y;
+        applyTransform();
+      }
+    }, { passive: false });
+    scroll.addEventListener('touchend', () => { drag = null; pinch = null; });
+  }
+
+  const p = currentPlanList[currentPlanIndex];
+  const img = overlay.querySelector('#planImg');
+  const scroll = overlay.querySelector('#planScroll');
+
+  function computeFit() {
+    if (!img.naturalWidth || !img.naturalHeight) return 1;
+    const pad = 16;
+    const w = Math.max(1, scroll.clientWidth - pad);
+    const h = Math.max(1, scroll.clientHeight - pad);
+    return Math.min(w / img.naturalWidth, h / img.naturalHeight);
+  }
+  function applyFit() {
+    planFit = computeFit();
+    planScale = planFit;
+    planPanX = 0;
+    planPanY = 0;
+    img.style.transform = `translate(-50%, -50%) scale(${planScale})`;
+  }
+  img.onload = applyFit;
+  if (img.complete && img.naturalWidth) applyFit();
+  img.src = p.detail || src;
+  overlay.querySelector('#planTitle').innerHTML = formatPlanTitle(p.label || label);
+  let r = (p.rev || rev || '').toString().trim();
+  if (r && !/^rev\s/i.test(r)) r = 'Rev ' + r;
+  const d = p.date || date || '';
+  overlay.querySelector('#planRev').innerHTML = r + (d ? '<br>' + d : '');
+  overlay.style.display = 'flex';
+  const showArrows = currentPlanList.length > 1;
+  const prevBtn = overlay.querySelector('#planPrev');
+  const nextBtn = overlay.querySelector('#planNext');
+  if (prevBtn) prevBtn.style.display = showArrows ? '' : 'none';
+  if (nextBtn) nextBtn.style.display = showArrows ? '' : 'none';
+
+  if (!overlay._resizeBound) {
+    overlay._resizeBound = true;
+    window.addEventListener('resize', () => {
+      if (overlay.style.display !== 'none' && img.naturalWidth) applyFit();
+    });
+  }
+}
+
+function pagePlan(dir) {
+  if (!currentPlanList.length) return;
+  currentPlanIndex = (currentPlanIndex + dir + currentPlanList.length) % currentPlanList.length;
+  const p = currentPlanList[currentPlanIndex];
+  openPlan(p.detail, p.label, p.rev, p.date, currentPlanList, currentPlanIndex);
+}
+
+function closePanel() { document.getElementById('panel').classList.remove('open'); }
+
+function pageGarden(dir) {
+  const alphaGardens = [...gardenOrder].sort((a, b) => a.localeCompare(b));
+  const pages = ["__TOC__"].concat(alphaGardens);
+  let idx = pages.indexOf(currentGarden);
+  if (idx < 0) idx = 0;
+  idx = (idx + dir + pages.length) % pages.length;
+  if (pages[idx] === "__TOC__") openTOC();
+  else openPanel(pages[idx]);
+}
+
+function showMap() {
+  document.getElementById('mapView').style.display = 'block';
+  document.getElementById('searchView').style.display = 'none';
+  document.getElementById('countsStrip').style.display = 'flex';
+  document.getElementById('mapBtn').classList.add('active');
+  document.getElementById('searchBtn').classList.remove('active');
+}
+function showSearch() {
+  document.getElementById('mapView').style.display = 'none';
+  document.getElementById('searchView').style.display = 'block';
+  document.getElementById('countsStrip').style.display = 'none';
+  document.getElementById('mapBtn').classList.remove('active');
+  document.getElementById('searchBtn').classList.add('active');
+  closePanel();
+  runSearch();
+}
+
+function matchesQuery(p, q) {
+  if (!q) return true;
+  const fields = [p.display, p.name, p.botanical, p.common].filter(Boolean).map(s => s.toLowerCase());
+  return fields.some(f => f.includes(q));
+}
+
+function clearSearch() {
+  document.getElementById('q').value = '';
+  document.getElementById('gardenFilter').value = '';
+  document.getElementById('typeFilter').value = '';
+  runSearch();
+  document.getElementById('q').focus();
+}
+
+function plantLink(id, plant, text) {
+  const label = text || plant.botanical || plant.display || plant.name || id;
+  if (hasSheet(id)) {
+    const pub = plant.published ? `<span class="pub-date">${plant.published}</span>` : '';
+    return `<a href="#" onclick="openPlantDetail('${id}'); return false;" style="color:inherit; text-decoration:underline;">${label}</a>${pub}`;
+  }
+  return `<span class="pending">${label}</span><span class="pending-tag">sheet pending</span>`;
+}
+
+function runSearch() {
+  if (!DATA) return;
+  const q = document.getElementById('q').value.trim().toLowerCase();
+  const g = document.getElementById('gardenFilter').value;
+  const t = document.getElementById('typeFilter').value;
+  const box = document.getElementById('searchResults');
+  const hits = [];
+  for (const p of Object.values(DATA.plants)) {
+    if (p.skip) continue;
+    if (t && p.type !== t) continue;
+    if (!matchesQuery(p, q)) continue;
+    const gardens = Object.keys(p.gardens || {});
+    if (g && !gardens.includes(g)) continue;
+    hits.push(p);
+  }
+  if (!hits.length) {
+    box.innerHTML = '<p class="empty-state">No plants match.</p>';
+    return;
+  }
+  hits.sort((a, b) => (a.botanical || a.display || a.name || '').toLowerCase().localeCompare((b.botanical || b.display || b.name || '').toLowerCase()));
+  const typeToSection = { 'Tree': 'Trees', 'Shrub': 'Shrubs', 'Groundcover': 'Groundcovers', 'Planter': 'Planters', 'Bulb': 'Bulbs', 'Vine': 'Vines' };
+  const sectionOrder = ['Trees', 'Shrubs', 'Planters', 'Groundcovers', 'Bulbs', 'Vines'];
+  const groups = {};
+  hits.forEach(p => {
+    const sec = typeToSection[p.type] || 'Other';
+    if (!groups[sec]) groups[sec] = [];
+    groups[sec].push(p);
+  });
+  const ordered = [...sectionOrder.filter(s => groups[s]), ...Object.keys(groups).filter(s => !sectionOrder.includes(s))];
+  let html = `<p class="match-count">${hits.length} match${hits.length === 1 ? '' : 'es'}</p>`;
+  const gFilter = document.getElementById('gardenFilter').value;
+  for (const sec of ordered) {
+    const rows = groups[sec];
+    let sectionQty = 0;
+    rows.forEach(p => {
+      const gardensToSum = gFilter ? [gFilter] : Object.keys(p.gardens || {});
+      gardensToSum.forEach(gn => {
+        (p.gardens[gn] || []).forEach(r => { sectionQty += isSf(r) ? 0 : (parseInt(r.qty, 10) || 0); });
+      });
+    });
+    html += `<div class="search-group"><h3>${sec} <span style="font-weight:400;color:#666;">(${sectionQty})</span></h3><table><thead><tr><th class="qty">Qty</th><th>Botanical</th><th>Common</th><th>Garden</th></tr></thead><tbody>`;
+    rows.forEach(p => {
+      let totalQty = 0;
+      const gardenNames = Object.keys(p.gardens || {});
+      const qtyGardens = gFilter ? [gFilter] : gardenNames;
+      qtyGardens.forEach(gn => {
+        (p.gardens[gn] || []).forEach(r => { totalQty += (parseInt(r.qty, 10) || 0); });
+      });
+      const common = p.common || '';
+      const asbuilt = (p.photos && p.photos.asbuilt) || {};
+      const asbuiltGardens = Object.keys(asbuilt).filter(gn => Array.isArray(asbuilt[gn]) && asbuilt[gn].length);
+      const relevantAsbuilt = gFilter ? asbuiltGardens.filter(gn => gn === gFilter) : asbuiltGardens;
+      const asbuiltNote = relevantAsbuilt.length ? ` <span style="color:var(--olive); font-size:12px;">As-built: ${relevantAsbuilt.join(', ')}</span>` : '';
+      const gardenHtml = gardenNames.map(gn => `<span>${gn}</span>`).join('');
+      html += `<tr><td class="qty">${totalQty}</td><td>${plantLink(p.id, p, p.botanical)}</td><td>${plantLink(p.id, p, p.common || '')}</td><td class="garden-col"><span class="garden-text" title="${gardenNames.join(', ')}">${gardenHtml}</span>${asbuiltNote}</td></tr>`;
+    });
+    html += '</tbody></table></div>';
+  }
+  box.innerHTML = html;
+}
+
+document.querySelectorAll('.btn').forEach(b => b.addEventListener('click', () => openPanel(b.dataset.garden)));
+document.addEventListener('click', (e) => {
+  const panel = document.getElementById('panel');
+  if (!panel.classList.contains('open')) return;
+  if (panel.contains(e.target)) return;
+  if (e.target.closest('.btn')) return;
+  if (e.target.closest('#tocBtn')) return;
+  if (e.target.closest('#plantDetailOverlay')) return;
+  if (e.target.closest('#planOverlay')) return;
+  closePanel();
+});
+document.getElementById('q').addEventListener('input', runSearch);
+
+document.getElementById('gardenFilter').addEventListener('change', runSearch);
+document.getElementById('typeFilter').addEventListener('change', runSearch);
+
+function printPlant(id) {
+  if (!DATA || !DATA.plants[id]) return;
+  const p = DATA.plants[id];
+  const name = p.display || p.name || id;
+  let body = `<h1>${name}</h1>`;
+  if (p.botanical) body += `<p><strong>Botanical:</strong> ${p.botanical}</p>`;
+  if (p.common) body += `<p><strong>Common:</strong> ${p.common}</p>`;
+  if (p.cultivar) body += `<p><strong>Cultivar:</strong> ${p.cultivar}</p>`;
+  body += `<p><strong>Type:</strong> ${p.type || ''}</p>`;
+  body += `<h2>Gardens</h2><table><thead><tr><th>Garden</th><th>Qty</th><th>Size</th></tr></thead><tbody>`;
+  const gardens = p.gardens || {};
+  const sorted = Object.keys(gardens).sort();
+  for (const g of sorted) {
+    const rows = gardens[g] || [];
+    rows.forEach(r => {
+      body += `<tr><td>${g}</td><td>${r.qty || ''}</td><td>${r.size || ''}</td></tr>`;
+    });
+  }
+  body += '</tbody></table>';
+  openPrintView(name, body);
+}
+
+async function handleDownload(value) {
+  if (!value) return;
+  document.getElementById('downloadSelect').value = '';
+  await downloadGardenZips(value === 'all' ? null : value);
+}
+
+async function downloadGardenZips(onlySection) {
+  if (!currentGarden || !DATA) { alert('Open a garden first'); return; }
+  const g = DATA.gardens && DATA.gardens[currentGarden];
+  if (!g) { alert('No plants for this garden'); return; }
+  const sectionOrder = ["Trees","Shrubs","Vines","Groundcovers","Bulbs","Planters"];
+  const sections = onlySection
+    ? [[onlySection, g[onlySection] || []]]
+    : sectionOrder.filter(s => g[s] && g[s].length).map(s => [s, g[s]])
+      .concat(Object.keys(g).filter(s => !sectionOrder.includes(s) && g[s] && g[s].length).map(s => [s, g[s]]));
+  const ids = new Set();
+  for (const [section, rows] of sections) {
+    if (!rows) continue;
+    for (const r of rows) {
+      if (r.id && hasSheet(r.id)) ids.add(r.id);
+    }
+  }
+  if (!ids.size) { alert('No plant ID sheets available for this selection'); return; }
+  if (typeof JSZip === 'undefined') { alert('Zip library not loaded. Check connection and try again.'); return; }
+  const zip = new JSZip();
+  const date = new Date().toISOString().slice(0, 10);
+  const label = onlySection || 'All';
+  const safeGarden = currentGarden.replace(/[^A-Za-z0-9]+/g, '_');
+  const safeLabel = label.replace(/[^A-Za-z0-9]+/g, '_');
+  let added = 0;
+  const status = document.createElement('div');
+  status.style.cssText = 'position:fixed;bottom:12px;left:50%;transform:translateX(-50%);background:#3A5F3A;color:#fff;padding:8px 14px;border-radius:4px;z-index:50;font-size:14px;';
+  status.textContent = 'Preparing ' + ids.size + ' sheets…';
+  document.body.appendChild(status);
+  try {
+    for (const id of [...ids].sort()) {
+      const url = pdfHref(id);
+      const res = await fetch(url);
+      if (!res.ok) continue;
+      const blob = await res.blob();
+      if (!blob || !blob.size) continue;
+      const plant = DATA.plants[id] || {};
+      const slug = (plant.botanical || plant.display || id).replace(/[^A-Za-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 60);
+      zip.file(id + '_' + slug + '.pdf', blob);
+      added += 1;
+      status.textContent = 'Added ' + added + ' of ' + ids.size + '…';
+    }
+    if (!added) { alert('No sheets could be fetched'); return; }
+    status.textContent = 'Building zip…';
+    const content = await zip.generateAsync({ type: 'blob' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(content);
+    a.download = safeGarden + '_' + safeLabel + '_' + date + '.zip';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+  } catch (err) {
+    alert('Could not build zip: ' + (err.message || err));
+  } finally {
+    status.remove();
+  }
+}
+
+function handlePrint(value) {
+  if (!value) return;
+  document.getElementById('printSelect').value = '';
+  if (value === 'all') printGarden();
+  else printGarden(value);
+}
+
+function printGarden(onlySection) {
+  if (!currentGarden || !DATA) return;
+  const g = DATA.gardens && DATA.gardens[currentGarden];
+  if (!g) return;
+  let body = `<h1>${currentGarden}${onlySection ? ' — ' + onlySection : ''}</h1>`;
+  const sectionOrder = ["Trees","Shrubs","Vines","Groundcovers","Bulbs","Planters"];
+  const sections = onlySection
+    ? [[onlySection, g[onlySection] || []]]
+    : sectionOrder.filter(s => g[s] && g[s].length).map(s => [s, g[s]])
+      .concat(Object.keys(g).filter(s => !sectionOrder.includes(s) && g[s] && g[s].length).map(s => [s, g[s]]));
+  for (const [section, rows] of sections) {
+    if (!rows || !rows.length) continue;
+    const merged = {};
+    rows.forEach(r => {
+      const id = r.id;
+      if (!merged[id]) merged[id] = { qty: 0, sizes: [] };
+      merged[id].qty += (parseInt(r.qty, 10) || 0);
+      if (r.size && !merged[id].sizes.includes(r.size)) merged[id].sizes.push(r.size);
+    });
+    body += `<h2>${section}</h2><table><thead><tr><th>Qty</th><th>Plant</th><th>Size</th></tr></thead><tbody>`;
+    const sorted = Object.entries(merged).sort((a, b) => {
+      const pa = DATA.plants[a[0]] || {};
+      const pb = DATA.plants[b[0]] || {};
+      return ((pa.display || pa.name || a[0]).toLowerCase()).localeCompare((pb.display || pb.name || b[0]).toLowerCase());
+    });
+    for (const [id, m] of sorted) {
+      const plant = DATA.plants[id] || {};
+      const name = plant.display || plant.name || id;
+      const sizeStr = m.sizes.join(', ');
+      body += `<tr><td>${m.qty}</td><td>${name}</td><td>${sizeStr}</td></tr>`;
+    }
+    body += '</tbody></table>';
+  }
+  openPrintView(currentGarden + (onlySection ? ' — ' + onlySection : ''), body);
+}
+
+function sumQty(entries) {
+  if (!Array.isArray(entries)) return 0;
+  return entries.reduce((n, e) => n + (Number(e.qty) || 0), 0);
+}
+function isSf(r) {
+  return String((r && r.size) || '').trim().toUpperCase() === 'SF';
+}
+function sumPlantQty(entries) {
+  if (!Array.isArray(entries)) return 0;
+  return entries.reduce((n, e) => n + (isSf(e) ? 0 : (Number(e.qty) || 0)), 0);
+}
+function plantTotalQty(plant) {
+  return Object.values(plant.gardens || {}).reduce((n, entries) => n + sumQty(entries), 0);
+}
+function plantCountQty(plant) {
+  return Object.values(plant.gardens || {}).reduce((n, entries) => n + sumPlantQty(entries), 0);
+}
+async function downloadSearch() {
+  if (!DATA) return;
+  const q = document.getElementById('q').value.trim().toLowerCase();
+  const g = document.getElementById('gardenFilter').value;
+  const t = document.getElementById('typeFilter').value;
+  const hits = [];
+  for (const p of Object.values(DATA.plants)) {
+    if (p.skip) continue;
+    if (t && p.type !== t) continue;
+    if (!matchesQuery(p, q)) continue;
+    const gardens = Object.keys(p.gardens || {});
+    if (g && !gardens.includes(g)) continue;
+    if (p.id && hasSheet(p.id)) hits.push(p);
+  }
+  if (!hits.length) { alert('No plant ID sheets match the current search'); return; }
+  if (typeof JSZip === 'undefined') { alert('Zip library not loaded. Check connection and try again.'); return; }
+  const zip = new JSZip();
+  const date = new Date().toISOString().slice(0, 10);
+  const status = document.createElement('div');
+  status.style.cssText = 'position:fixed;bottom:12px;left:50%;transform:translateX(-50%);background:#3A5F3A;color:#fff;padding:8px 14px;border-radius:4px;z-index:50;font-size:14px;';
+  status.textContent = 'Preparing ' + hits.length + ' sheets…';
+  document.body.appendChild(status);
+  let added = 0;
+  try {
+    for (const p of hits) {
+      const url = pdfHref(p.id);
+      const res = await fetch(url);
+      if (!res.ok) continue;
+      const blob = await res.blob();
+      if (!blob || !blob.size) continue;
+      const slug = (p.botanical || p.display || p.id).replace(/[^A-Za-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 60);
+      zip.file(p.id + '_' + slug + '.pdf', blob);
+      added += 1;
+      status.textContent = 'Added ' + added + ' of ' + hits.length + '…';
+    }
+    if (!added) { alert('No sheets could be fetched'); return; }
+    status.textContent = 'Building zip…';
+    const content = await zip.generateAsync({ type: 'blob' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(content);
+    a.download = 'Search_' + date + '.zip';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+  } catch (err) {
+    alert('Could not build zip: ' + (err.message || err));
+  } finally {
+    status.remove();
+  }
+}
+
+function printSearch() {
+  if (!DATA) return;
+  const q = document.getElementById('q').value.trim().toLowerCase();
+  const g = document.getElementById('gardenFilter').value;
+  const t = document.getElementById('typeFilter').value;
+  const hits = [];
+  for (const plant of Object.values(DATA.plants)) {
+    if (plant.skip) continue;
+    if (t && plant.type !== t) continue;
+    if (!matchesQuery(plant, q)) continue;
+    const gardens = Object.keys(plant.gardens || {});
+    if (g && !gardens.includes(g)) continue;
+    hits.push(plant);
+  }
+  const typeOrder = ['Tree', 'Shrub', 'Vine', 'Groundcover', 'Bulb', 'Planter'];
+  const groups = {};
+  hits.forEach(plant => {
+    const ty = plant.type || 'Other';
+    if (!groups[ty]) groups[ty] = [];
+    groups[ty].push(plant);
+  });
+  Object.values(groups).forEach(list => {
+    list.sort((a, b) => (a.botanical || a.display || a.name || '').toLowerCase().localeCompare((b.botanical || b.display || b.name || '').toLowerCase()));
+  });
+  const gardenLabel = g || 'All gardens';
+  const typeLabel = t || 'All types';
+  const speciesCount = hits.length;
+  let totalPlants = 0;
+  hits.forEach(plant => {
+    totalPlants += g ? sumPlantQty(plant.gardens[g]) : plantCountQty(plant);
+  });
+  let body = `<p class="print-small">Search results</p>`;
+  body += `<h1 class="print-xlarge">${gardenLabel}</h1>`;
+  body += `<h1 class="print-large">${typeLabel}</h1>`;
+  body += `<h1 class="print-large"># species: ${speciesCount}</h1>`;
+  body += `<h1 class="print-large"># plants: ${totalPlants}</h1>`;
+  if (q) body += `<p>Search: ${document.getElementById('q').value.trim()}</p>`;
+  const orderedTypes = typeOrder.filter(ty => groups[ty]).concat(Object.keys(groups).filter(ty => !typeOrder.includes(ty)));
+  orderedTypes.forEach(ty => {
+    const list = groups[ty];
+    let sectionQty = 0;
+    list.forEach(plant => { sectionQty += g ? sumPlantQty(plant.gardens[g]) : plantCountQty(plant); });
+    body += `<h2 class="section-head">${ty}s &nbsp;&nbsp; # species: ${list.length} &nbsp;&nbsp; # plants: ${sectionQty}</h2>`;
+    if (g) {
+      body += '<table><thead><tr><th>Qty</th><th>Botanical</th><th>Common</th></tr></thead><tbody>';
+      list.forEach(plant => {
+        const qty = sumQty(plant.gardens[g]);
+        body += `<tr><td>${qty}</td><td>${plant.botanical || ''}</td><td>${plant.common || ''}</td></tr>`;
+      });
+    } else {
+      body += '<table><thead><tr><th>Qty</th><th>Botanical</th><th>Common</th><th>Gardens</th></tr></thead><tbody>';
+      list.forEach(plant => {
+        const qty = plantTotalQty(plant);
+        const gardens = Object.keys(plant.gardens || {}).join(', ');
+        body += `<tr><td>${qty}</td><td>${plant.botanical || ''}</td><td>${plant.common || ''}</td><td>${gardens}</td></tr>`;
+      });
+    }
+    body += '</tbody></table>';
+  });
+  openPrintView('Search results', body);
+}
+
+function openPrintView(title, body) {
+  const w = window.open('', '_blank');
+  if (!w) { alert('Allow pop-ups to print'); return; }
+  w.document.write(`<!DOCTYPE html><html><head><title>${title}</title><style>
+    body{font-family:sans-serif;margin:12px;}
+    h1{color:#3A5F3A;} .print-small{font-size:11px;color:#666;margin:0 0 6px;} .print-large{font-size:18px;margin:2px 0;color:#3A5F3A;} .print-xlarge{font-size:26px;margin:2px 0 6px;color:#3A5F3A;font-weight:700;} .section-head{background:#3A5F3A;color:#fff;padding:6px 10px;margin:16px 0 6px;font-size:16px;font-weight:700;}
+    table{border-collapse:collapse;width:100%;margin-bottom:12px;}
+    th,td{border:1px solid #9a9a9a;padding:4px 6px;text-align:left;}
+    th{background:#3A5F3A;color:#fff;}
+    .close-bar{position:fixed;top:0;left:0;right:0;background:#3A5F3A;color:#fff;padding:10px;text-align:center;z-index:10;}
+    .close-bar button{background:#9C5F4A;color:#fff;border:none;padding:8px 16px;border-radius:4px;font-weight:600;min-height:40px;}
+    body{padding-top:50px;}
+  </style></head><body>
+  <div class="close-bar"><button onclick="window.close()">Close and return</button> <button onclick="window.print()">Print</button></div>
+  ${body}
+  </body></html>`);
+  w.document.close();
+  w.focus();
+}
+
+</script>
+</body>
+</html>
